@@ -1,6 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AdminHeader } from "@/components/admin/admin-header";
 import { EquipmentAdminPanel } from "@/components/admin/equipment-admin-panel";
 import { LogoutButton } from "@/components/logout-button";
 import { prisma } from "@/lib/prisma";
@@ -13,10 +13,6 @@ export default async function AdminEquipmentPage() {
 
   if (!session.isLoggedIn) {
     redirect("/login");
-  }
-
-  if (!session.isAdmin) {
-    redirect("/");
   }
 
   const rows = await prisma.equipment.findMany({
@@ -34,10 +30,15 @@ export default async function AdminEquipmentPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <AdminHeader
-          title="Equipment"
-          description="Manage inventory, pricing, and maintenance status."
-        />
+        <div>
+          <Link
+            href={session.isAdmin ? "/admin" : "/"}
+            className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
+          >
+            ← {session.isAdmin ? "Admin" : "Counter"}
+          </Link>
+          <h1 className="mt-2 text-2xl font-semibold text-zinc-900">Equipment</h1>
+        </div>
         <LogoutButton />
       </div>
 

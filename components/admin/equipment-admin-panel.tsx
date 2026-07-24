@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import {
   createEquipment,
+  deleteEquipment,
   setEquipmentMaintenance,
   updateEquipment,
   type ActionResult,
@@ -154,6 +155,16 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
     runAction(() => setEquipmentMaintenance(row.id, true));
   }
 
+  function handleRemove(row: EquipmentRow) {
+    const confirmed = window.confirm(
+      `Remove "${row.name}" from inventory? This cannot be undone.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+    runAction(() => deleteEquipment(row.id));
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -235,6 +246,14 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
                           Mark maintenance
                         </button>
                       )}
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => handleRemove(row)}
+                        className="rounded-md border border-red-300 px-2.5 py-1.5 text-xs font-medium text-red-800 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-zinc-500"
+                      >
+                        Remove
+                      </button>
                     </div>
                     {row.status === EquipmentStatus.RENTED ||
                     row.status === EquipmentStatus.BOOKED ? (

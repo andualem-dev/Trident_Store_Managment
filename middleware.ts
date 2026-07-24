@@ -59,6 +59,13 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/admin") && !session.isAdmin) {
+    const operatorEquipmentPath = "/admin/equipment";
+    if (
+      pathname === operatorEquipmentPath ||
+      pathname.startsWith(`${operatorEquipmentPath}/`)
+    ) {
+      return response;
+    }
     return NextResponse.redirect(new URL("/", request.url));
   }
 

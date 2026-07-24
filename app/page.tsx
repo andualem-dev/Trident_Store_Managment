@@ -59,6 +59,12 @@ export default async function HomePage() {
         >
           Customers
         </Link>
+        <Link
+          href="/admin/equipment"
+          className="inline-flex min-h-12 items-center rounded-xl border border-zinc-300 bg-white px-5 text-base font-medium text-zinc-900 hover:bg-zinc-50"
+        >
+          Equipment
+        </Link>
         {session.isAdmin ? (
           <Link
             href="/admin"

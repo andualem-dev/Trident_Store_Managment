@@ -3,7 +3,7 @@
 import { EquipmentStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-import { requireAdminSession } from "@/lib/admin-auth";
+import { requireSession } from "@/lib/session-server";
 import { logAudit } from "@/lib/audit";
 import { EQUIPMENT_CATEGORIES } from "@/lib/equipment-categories";
 import { prisma } from "@/lib/prisma";
@@ -45,7 +45,7 @@ function normalizeCategory(category: string, customCategory: string): string | n
 
 export async function createEquipment(formData: FormData): Promise<ActionResult> {
   try {
-    const session = await requireAdminSession();
+    const session = await requireSession();
     const name = String(formData.get("name") ?? "").trim();
     const category = normalizeCategory(
       String(formData.get("category") ?? ""),
@@ -94,7 +94,7 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
 
 export async function updateEquipment(formData: FormData): Promise<ActionResult> {
   try {
-    const session = await requireAdminSession();
+    const session = await requireSession();
     const id = String(formData.get("id") ?? "").trim();
     const name = String(formData.get("name") ?? "").trim();
     const category = normalizeCategory(
@@ -157,7 +157,7 @@ export async function setEquipmentMaintenance(
   toMaintenance: boolean,
 ): Promise<ActionResult> {
   try {
-    const session = await requireAdminSession();
+    const session = await requireSession();
     const equipment = await prisma.equipment.findUnique({
       where: { id: equipmentId },
     });
@@ -211,5 +211,57 @@ export async function setEquipmentMaintenance(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update status." };
+  }
+}
+
+export async function deleteEquipment(equipmentId: string): Promise<ActionResult> {
+  try {
+    const session = await requireSession();
+    const equipment = await prisma.equipment.findUnique({
+      where: { id: equipmentId },
+      include: {
+        _count: {
+          select: { rentalItems: true, bookings: true },
+        },
+      },
+    });
+
+    if (!equipment) {
+      return { ok: false, error: "Equipment not found." };
+    }
+
+    if (
+      equipment.status === EquipmentStatus.RENTED ||
+      equipment.status === EquipmentStatus.BOOKED
+    ) {
+      return { ok: false, error: "Cannot remove while rented or booked." };
+    }
+
+    if (equipment._count.rentalItems > 0 || equipment._count.bookings > 0) {
+      return {
+        ok: false,
+        error: "Cannot remove — item has rental or booking history.",
+      };
+    }
+
+    await prisma.equipment.delete({ where: { id: equipmentId } });
+
+    await logAudit({
+      operatorId: session.operatorId,
+      action: "DELETE",
+      entityType: "Equipment",
+      entityId: equipment.id,
+      details: {
+        name: equipment.name,
+        category: equipment.category,
+        dailyRate: equipment.dailyRate.toString(),
+        status: equipment.status,
+      },
+    });
+
+    revalidatePath("/admin/equipment");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not remove equipment." };
   }
 }
