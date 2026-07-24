@@ -13,6 +13,7 @@ export type EquipmentRow = {
   name: string;
   category: string;
   dailyRate: string;
+  weekendDailyRate: string | null;
   status: EquipmentStatus;
 };
 
@@ -34,6 +35,15 @@ function parseQuantity(value: string): number | null {
     return null;
   }
   return parsed;
+}
+
+function parseWeekendRate(value: string): number | null | "invalid" {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = parseDailyRate(trimmed);
+  return parsed === null ? "invalid" : parsed;
 }
 
 function normalizeCategory(category: string, customCategory: string): string | null {
@@ -60,6 +70,9 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
       String(formData.get("customCategory") ?? ""),
     );
     const dailyRate = parseDailyRate(String(formData.get("dailyRate") ?? ""));
+    const weekendDailyRate = parseWeekendRate(
+      String(formData.get("weekendDailyRate") ?? ""),
+    );
     const quantity = parseQuantity(String(formData.get("quantity") ?? "1"));
 
     if (!name) {
@@ -71,6 +84,9 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
     if (dailyRate === null) {
       return { ok: false, error: "Daily rate must be a positive number." };
     }
+    if (weekendDailyRate === "invalid") {
+      return { ok: false, error: "Weekend rate must be a positive number." };
+    }
     if (quantity === null) {
       return { ok: false, error: "Quantity must be between 1 and 100." };
     }
@@ -80,6 +96,7 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
         name,
         category,
         dailyRate,
+        weekendDailyRate,
         status: EquipmentStatus.AVAILABLE,
       })),
     });
@@ -93,6 +110,7 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
         name,
         category,
         dailyRate,
+        weekendDailyRate,
         quantity: created.count,
         status: EquipmentStatus.AVAILABLE,
       },
@@ -115,6 +133,9 @@ export async function updateEquipment(formData: FormData): Promise<ActionResult>
       String(formData.get("customCategory") ?? ""),
     );
     const dailyRate = parseDailyRate(String(formData.get("dailyRate") ?? ""));
+    const weekendDailyRate = parseWeekendRate(
+      String(formData.get("weekendDailyRate") ?? ""),
+    );
 
     if (!id) {
       return { ok: false, error: "Missing equipment id." };
@@ -128,6 +149,9 @@ export async function updateEquipment(formData: FormData): Promise<ActionResult>
     if (dailyRate === null) {
       return { ok: false, error: "Daily rate must be a positive number." };
     }
+    if (weekendDailyRate === "invalid") {
+      return { ok: false, error: "Weekend rate must be a positive number." };
+    }
 
     const existing = await prisma.equipment.findUnique({ where: { id } });
     if (!existing) {
@@ -136,7 +160,7 @@ export async function updateEquipment(formData: FormData): Promise<ActionResult>
 
     const equipment = await prisma.equipment.update({
       where: { id },
-      data: { name, category, dailyRate },
+      data: { name, category, dailyRate, weekendDailyRate },
     });
 
     await logAudit({
@@ -149,11 +173,13 @@ export async function updateEquipment(formData: FormData): Promise<ActionResult>
           name: existing.name,
           category: existing.category,
           dailyRate: existing.dailyRate.toString(),
+          weekendDailyRate: existing.weekendDailyRate?.toString() ?? null,
         },
         after: {
           name,
           category,
           dailyRate,
+          weekendDailyRate,
         },
       },
     });
@@ -268,6 +294,7 @@ export async function deleteEquipment(equipmentId: string): Promise<ActionResult
         name: equipment.name,
         category: equipment.category,
         dailyRate: equipment.dailyRate.toString(),
+        weekendDailyRate: equipment.weekendDailyRate?.toString() ?? null,
         status: equipment.status,
       },
     });

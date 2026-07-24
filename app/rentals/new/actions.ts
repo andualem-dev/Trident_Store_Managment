@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
+import { rentalTotalForItems } from "@/lib/equipment-pricing";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session-server";
 
@@ -23,6 +24,7 @@ export type RentalReceipt = {
     name: string;
     category: string;
     dailyRate: string;
+    weekendDailyRate: string | null;
   }>;
   days: number;
   startAt: string;
@@ -114,6 +116,7 @@ export async function createRental(input: {
             name: true,
             category: true,
             dailyRate: true,
+            weekendDailyRate: true,
           },
           orderBy: [{ category: "asc" }, { name: "asc" }],
         });
@@ -122,11 +125,15 @@ export async function createRental(input: {
           throw new Error("EQUIPMENT_UNAVAILABLE");
         }
 
-        const dailyTotal = equipment.reduce(
-          (sum, item) => sum.add(item.dailyRate),
-          new Prisma.Decimal(0),
+        const totalCostValue = rentalTotalForItems(
+          equipment.map((item) => ({
+            dailyRate: item.dailyRate.toNumber(),
+            weekendDailyRate: item.weekendDailyRate?.toNumber() ?? null,
+          })),
+          startAt,
+          days,
         );
-        const totalCost = dailyTotal.mul(days);
+        const totalCost = new Prisma.Decimal(totalCostValue.toFixed(2));
         const dueAt = new Date(startAt.getTime() + days * 24 * 60 * 60 * 1000);
 
         const statusUpdate = await tx.equipment.updateMany({
@@ -172,6 +179,7 @@ export async function createRental(input: {
                 id: item.id,
                 name: item.name,
                 dailyRate: item.dailyRate.toString(),
+                weekendDailyRate: item.weekendDailyRate?.toString() ?? null,
               })),
               totalCost: totalCost.toFixed(2),
               startAt: startAt.toISOString(),
@@ -192,6 +200,7 @@ export async function createRental(input: {
             name: item.name,
             category: item.category,
             dailyRate: item.dailyRate.toFixed(2),
+            weekendDailyRate: item.weekendDailyRate?.toFixed(2) ?? null,
           })),
           days,
           startAt: startAt.toISOString(),

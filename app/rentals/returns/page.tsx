@@ -35,6 +35,7 @@ export default async function ReturnRentalsPage() {
                 name: true,
                 category: true,
                 dailyRate: true,
+                weekendDailyRate: true,
               },
             },
           },
@@ -58,6 +59,7 @@ export default async function ReturnRentalsPage() {
       name: equipment.name,
       category: equipment.category,
       dailyRate: equipment.dailyRate.toFixed(2),
+      weekendDailyRate: equipment.weekendDailyRate?.toFixed(2) ?? null,
     })),
   }));
 

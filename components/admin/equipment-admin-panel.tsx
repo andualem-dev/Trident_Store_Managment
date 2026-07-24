@@ -16,6 +16,7 @@ import {
   EQUIPMENT_CATEGORIES,
   type EquipmentCategoryPreset,
 } from "@/lib/equipment-categories";
+import { formatEquipmentRateLabel } from "@/lib/equipment-pricing";
 
 function statusLabel(status: EquipmentStatus) {
   switch (status) {
@@ -43,10 +44,6 @@ function statusClass(status: EquipmentStatus) {
   }
 }
 
-function formatRate(dailyRate: string) {
-  const value = Number.parseFloat(dailyRate);
-  return Number.isFinite(value) ? value.toFixed(2) : dailyRate;
-}
 
 function categoryPreset(category: string): EquipmentCategoryPreset {
   if ((EQUIPMENT_CATEGORIES as readonly string[]).includes(category)) {
@@ -63,6 +60,7 @@ type FormState = {
   category: EquipmentCategoryPreset;
   customCategory: string;
   dailyRate: string;
+  weekendDailyRate: string;
   quantity: string;
 };
 
@@ -71,6 +69,7 @@ const emptyForm: FormState = {
   category: "Camera",
   customCategory: "",
   dailyRate: "",
+  weekendDailyRate: "",
   quantity: "1",
 };
 
@@ -96,6 +95,7 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
       category: preset,
       customCategory: preset === "Other" ? row.category : "",
       dailyRate: row.dailyRate,
+      weekendDailyRate: row.weekendDailyRate ?? "",
       quantity: "1",
     });
     setFormError(null);
@@ -130,6 +130,7 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
     payload.set("category", form.category);
     payload.set("customCategory", form.customCategory);
     payload.set("dailyRate", form.dailyRate);
+    payload.set("weekendDailyRate", form.weekendDailyRate);
 
     if (formMode === "edit" && form.id) {
       payload.set("id", form.id);
@@ -213,7 +214,12 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
                 <tr key={row.id} className="text-zinc-900">
                   <td className="px-4 py-3 font-medium">{row.name}</td>
                   <td className="px-4 py-3">{row.category}</td>
-                  <td className="px-4 py-3 tabular-nums">{formatRate(row.dailyRate)}</td>
+                  <td className="px-4 py-3 tabular-nums text-zinc-800">
+                    {formatEquipmentRateLabel({
+                      dailyRate: row.dailyRate,
+                      weekendDailyRate: row.weekendDailyRate,
+                    })}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${statusClass(row.status)}`}
@@ -343,6 +349,43 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
                   />
                 </div>
               ) : null}
+              <div>
+                <label htmlFor="eq-rate" className="mb-1 block text-sm font-medium">
+                  Weekday rate (Mon–Thu)
+                </label>
+                <input
+                  id="eq-rate"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  required
+                  value={form.dailyRate}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, dailyRate: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="eq-weekend-rate" className="mb-1 block text-sm font-medium">
+                  Weekend rate (Fri–Sun)
+                </label>
+                <input
+                  id="eq-weekend-rate"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={form.weekendDailyRate}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      weekendDailyRate: event.target.value,
+                    }))
+                  }
+                  placeholder="Same as weekday if empty"
+                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                />
+              </div>
               {formMode === "create" ? (
                 <div>
                   <label htmlFor="eq-quantity" className="mb-1 block text-sm font-medium">
@@ -363,23 +406,6 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
                   />
                 </div>
               ) : null}
-              <div>
-                <label htmlFor="eq-rate" className="mb-1 block text-sm font-medium">
-                  Daily rate
-                </label>
-                <input
-                  id="eq-rate"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  required
-                  value={form.dailyRate}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, dailyRate: event.target.value }))
-                  }
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                />
-              </div>
               {formError ? (
                 <p className="text-sm text-red-600">{formError}</p>
               ) : null}

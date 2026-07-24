@@ -26,6 +26,7 @@ export default async function NewRentalPage() {
         name: true,
         category: true,
         dailyRate: true,
+        weekendDailyRate: true,
         bookings: {
           where: {
             status: { in: [BookingStatus.UPCOMING, BookingStatus.ACTIVE] },
@@ -61,6 +62,7 @@ export default async function NewRentalPage() {
   const equipment = rows.map((item) => ({
     ...item,
     dailyRate: item.dailyRate.toFixed(2),
+    weekendDailyRate: item.weekendDailyRate?.toFixed(2) ?? null,
     rentalCount: rentalCounts.get(item.id) ?? 0,
     bookings: item.bookings.map((booking) => ({
       id: booking.id,

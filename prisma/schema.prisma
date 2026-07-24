@@ -64,11 +64,12 @@ model Guarantor {
 }
 
 model Equipment {
-  id        String          @id @default(cuid())
-  name      String
-  category  String
-  dailyRate Decimal         @db.Decimal(10, 2)
-  status    EquipmentStatus @default(AVAILABLE)
+  id               String          @id @default(cuid())
+  name             String
+  category         String
+  dailyRate        Decimal         @db.Decimal(10, 2)
+  weekendDailyRate Decimal?        @db.Decimal(10, 2)
+  status           EquipmentStatus @default(AVAILABLE)
 
   rentalItems RentalItem[]
   bookings    Booking[]

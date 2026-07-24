@@ -24,6 +24,7 @@ export default async function NewBookingPage() {
       name: true,
       category: true,
       dailyRate: true,
+      weekendDailyRate: true,
       status: true,
       bookings: {
         where: {
@@ -47,6 +48,7 @@ export default async function NewBookingPage() {
     name: item.name,
     category: item.category,
     dailyRate: item.dailyRate.toFixed(2),
+    weekendDailyRate: item.weekendDailyRate?.toFixed(2) ?? null,
     status: item.status,
     bookings: item.bookings.map((booking) => ({
       id: booking.id,

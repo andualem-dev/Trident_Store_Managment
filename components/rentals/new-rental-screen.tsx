@@ -10,12 +10,18 @@ import { CustomerPhoneSearch } from "@/components/customers/customer-phone-searc
 import { CustomerAvatar } from "@/components/customers/customer-avatar";
 import { CustomerQuickAddPanel } from "@/components/customers/customer-quick-add-panel";
 import type { CustomerSummary } from "@/lib/customers";
+import {
+  formatEquipmentRateLabel,
+  rentalTotalForItem,
+  rentalTotalForItems,
+} from "@/lib/equipment-pricing";
 
 export type AvailableEquipment = {
   id: string;
   name: string;
   category: string;
   dailyRate: string;
+  weekendDailyRate: string | null;
   rentalCount: number;
   bookings: Array<{
     id: string;
@@ -129,7 +135,10 @@ function RentalReceiptView({
                 <p className="text-xs text-zinc-600">{item.category}</p>
               </div>
               <p className="text-sm tabular-nums text-zinc-700">
-                {money(item.dailyRate)} / day
+                {formatEquipmentRateLabel({
+                  dailyRate: item.dailyRate,
+                  weekendDailyRate: item.weekendDailyRate,
+                })}
               </p>
             </li>
           ))}
@@ -176,12 +185,17 @@ export function NewRentalScreen({
     () => equipment.filter((item) => selectedSet.has(item.id)),
     [equipment, selectedSet],
   );
-  const total = useMemo(
-    () =>
-      selectedItems.reduce((sum, item) => sum + Number(item.dailyRate), 0) *
+  const total = useMemo(() => {
+    const startAt = new Date(initialNow);
+    return rentalTotalForItems(
+      selectedItems.map((item) => ({
+        dailyRate: item.dailyRate,
+        weekendDailyRate: item.weekendDailyRate,
+      })),
+      startAt,
       days,
-    [selectedItems, days],
-  );
+    );
+  }, [selectedItems, days, initialNow]);
   const filteredGroups = useMemo(() => {
     const query = filter.trim().toLowerCase();
     const groups = new Map<string, AvailableEquipment[]>();
@@ -381,7 +395,10 @@ export function NewRentalScreen({
                             selected ? "text-white/80" : "text-zinc-600"
                           }`}
                         >
-                          {money(item.dailyRate)} / day
+                          {formatEquipmentRateLabel({
+                            dailyRate: item.dailyRate,
+                            weekendDailyRate: item.weekendDailyRate,
+                          })}
                         </span>
                         {item.bookings.map((booking) => (
                           <span
@@ -447,7 +464,10 @@ export function NewRentalScreen({
                                 selected ? "text-white/80" : "text-zinc-600"
                               }`}
                             >
-                              {money(item.dailyRate)} / day
+                              {formatEquipmentRateLabel({
+                            dailyRate: item.dailyRate,
+                            weekendDailyRate: item.weekendDailyRate,
+                          })}
                             </span>
                             {item.bookings.map((booking) => (
                               <span
@@ -514,8 +534,17 @@ export function NewRentalScreen({
                         {item.name}
                       </p>
                       <p className="text-xs text-zinc-600">
-                        {money(item.dailyRate)} × {days} day
-                        {days === 1 ? "" : "s"}
+                        {money(
+                          rentalTotalForItem(
+                            {
+                              dailyRate: item.dailyRate,
+                              weekendDailyRate: item.weekendDailyRate,
+                            },
+                            new Date(initialNow),
+                            days,
+                          ),
+                        )}{" "}
+                        for {days} day{days === 1 ? "" : "s"}
                       </p>
                     </div>
                     <button

@@ -24,6 +24,7 @@ export default async function AdminEquipmentPage() {
     name: item.name,
     category: item.category,
     dailyRate: item.dailyRate.toString(),
+    weekendDailyRate: item.weekendDailyRate?.toString() ?? null,
     status: item.status,
   }));
 

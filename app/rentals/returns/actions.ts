@@ -7,7 +7,7 @@ import {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
-import { calculateLateFee } from "@/lib/late-fee";
+import { calculateLateFeeForItems } from "@/lib/late-fee";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session-server";
 
@@ -45,7 +45,12 @@ export async function returnRental(
               items: {
                 include: {
                   equipment: {
-                    select: { id: true, name: true, dailyRate: true },
+                    select: {
+                      id: true,
+                      name: true,
+                      dailyRate: true,
+                      weekendDailyRate: true,
+                    },
                   },
                 },
               },
@@ -61,17 +66,15 @@ export async function returnRental(
           throw new Error("SETTINGS_MISSING");
         }
 
-        const dailyRateTotalCents = rental.items.reduce(
-          (sum, item) =>
-            sum + item.equipment.dailyRate.mul(100).toNumber(),
-          0,
-        );
         const returnedAt = new Date();
-        const fee = calculateLateFee({
+        const fee = calculateLateFeeForItems({
+          items: rental.items.map((item) => ({
+            dailyRate: item.equipment.dailyRate.toNumber(),
+            weekendDailyRate: item.equipment.weekendDailyRate?.toNumber() ?? null,
+          })),
           dueAt: rental.dueAt,
           returnedAt,
           gracePeriodMinutes: settings.gracePeriodMinutes,
-          dailyRateCents: dailyRateTotalCents,
         });
         const lateFee = new Prisma.Decimal(fee.lateFeeCents).div(100);
         const grandTotal = rental.totalCost.add(lateFee);

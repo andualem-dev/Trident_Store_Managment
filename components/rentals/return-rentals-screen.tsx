@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 
 import { returnRental } from "@/app/rentals/returns/actions";
-import { calculateLateFee } from "@/lib/late-fee";
+import { calculateLateFeeForItems } from "@/lib/late-fee";
+import { formatEquipmentRateLabel } from "@/lib/equipment-pricing";
 
 export type ActiveRentalRow = {
   id: string;
@@ -18,6 +19,7 @@ export type ActiveRentalRow = {
     name: string;
     category: string;
     dailyRate: string;
+    weekendDailyRate: string | null;
   }>;
 };
 
@@ -100,15 +102,14 @@ export function ReturnRentalsScreen({
       return null;
     }
 
-    const dailyRateCents = selected.items.reduce(
-      (sum, item) => sum + Math.round(Number(item.dailyRate) * 100),
-      0,
-    );
-    return calculateLateFee({
+    return calculateLateFeeForItems({
+      items: selected.items.map((item) => ({
+        dailyRate: item.dailyRate,
+        weekendDailyRate: item.weekendDailyRate,
+      })),
       dueAt: new Date(selected.dueAt),
       returnedAt: new Date(now),
       gracePeriodMinutes,
-      dailyRateCents,
     });
   }, [selected, now, gracePeriodMinutes]);
 
@@ -268,7 +269,10 @@ export function ReturnRentalsScreen({
                       <p className="text-xs text-zinc-600">{item.category}</p>
                     </div>
                     <span className="tabular-nums text-zinc-700">
-                      {money(item.dailyRate)} / day
+                      {formatEquipmentRateLabel({
+                        dailyRate: item.dailyRate,
+                        weekendDailyRate: item.weekendDailyRate,
+                      })}
                     </span>
                   </li>
                 ))}
