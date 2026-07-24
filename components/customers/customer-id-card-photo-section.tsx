@@ -46,12 +46,7 @@ export function CustomerIdCardPhotoSection({ customer, onUpdated }: Props) {
 
   return (
     <div className="space-y-3 border-t border-zinc-200 pt-4">
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-900">ID card photo</h3>
-        <p className="mt-1 text-xs text-zinc-600">
-          Upload or replace the customer&apos;s ID document photo.
-        </p>
-      </div>
+      <h3 className="text-sm font-semibold text-zinc-900">ID card photo</h3>
 
       <CustomerPhotos
         idCardPhotoUrl={customer.idCardPhotoUrl}
@@ -68,9 +63,7 @@ export function CustomerIdCardPhotoSection({ customer, onUpdated }: Props) {
         className="block w-full max-w-xs text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800"
       />
 
-      {pending ? (
-        <p className="text-xs text-zinc-600">Uploading ID card photo…</p>
-      ) : null}
+      {pending ? <p className="text-xs text-zinc-600">Uploading…</p> : null}
 
       {error ? (
         <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>

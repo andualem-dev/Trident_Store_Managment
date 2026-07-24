@@ -137,7 +137,6 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
                   Pick an existing customer as guarantor — not a new name/phone.
                 </p>
                 <CustomerPhoneSearch
-                  key={guarantor?.id ?? "no-guarantor"}
                   label="Guarantor customer"
                   placeholder="Search existing customer…"
                   selectedCustomer={guarantor}

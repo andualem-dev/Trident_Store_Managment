@@ -57,12 +57,7 @@ export function CustomerGuarantorsSection({ customer, onUpdated }: Props) {
 
   return (
     <div className="space-y-3 border-t border-zinc-200 pt-4">
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-900">Guarantors</h3>
-        <p className="mt-1 text-xs text-zinc-600">
-          Link an existing registered customer as guarantor.
-        </p>
-      </div>
+      <h3 className="text-sm font-semibold text-zinc-900">Guarantors</h3>
 
       {guarantors.length > 0 ? (
         <ul className="space-y-2">
@@ -86,15 +81,13 @@ export function CustomerGuarantorsSection({ customer, onUpdated }: Props) {
             </li>
           ))}
         </ul>
-      ) : (
-        <p className="text-sm text-zinc-600">No guarantor linked yet.</p>
-      )}
+      ) : null}
 
       <div className="space-y-2">
         <CustomerPhoneSearch
           key={`guarantor-${customer.id}-${guarantorPick?.id ?? "none"}`}
-          label="Add guarantor from existing customers"
-          placeholder="Search customer to link as guarantor…"
+          label="Add guarantor"
+          placeholder="Search customer…"
           selectedCustomer={guarantorPick}
           excludeCustomerId={customer.id}
           onSelect={setGuarantorPick}

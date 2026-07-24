@@ -46,13 +46,7 @@ export function CustomerProfilePhotoSection({ customer, onUpdated }: Props) {
 
   return (
     <div className="space-y-3 border-t border-zinc-200 pt-4">
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-900">Profile picture</h3>
-        <p className="mt-1 text-xs text-zinc-600">
-          Shown as the customer avatar across the app. JPEG, PNG, WebP, or iPhone
-          HEIC — saved as WebP automatically.
-        </p>
-      </div>
+      <h3 className="text-sm font-semibold text-zinc-900">Profile picture</h3>
 
       <div className="flex flex-wrap items-center gap-4">
         <CustomerAvatar
@@ -71,14 +65,8 @@ export function CustomerProfilePhotoSection({ customer, onUpdated }: Props) {
             className="block w-full max-w-xs text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800"
           />
           {pending ? (
-            <p className="text-xs text-zinc-600">Uploading profile picture…</p>
-          ) : customer.profilePhotoUrl ? (
-            <p className="text-xs text-zinc-600">
-              Choose a new photo to replace the current one.
-            </p>
-          ) : (
-            <p className="text-xs text-zinc-600">No profile picture yet.</p>
-          )}
+            <p className="text-xs text-zinc-600">Uploading…</p>
+          ) : null}
         </div>
       </div>
 

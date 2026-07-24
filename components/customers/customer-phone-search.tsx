@@ -29,11 +29,20 @@ export function CustomerPhoneSearch({
   autoFocus = false,
 }: CustomerPhoneSearchProps) {
   const listId = useId();
-  const [query, setQuery] = useState(selectedCustomer?.name ?? "");
+  const [mounted, setMounted] = useState(false);
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<CustomerSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setQuery(selectedCustomer?.name ?? "");
+  }, [selectedCustomer?.id, selectedCustomer?.name]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -103,9 +112,12 @@ export function CustomerPhoneSearch({
       </label>
       <input
         id={`${listId}-input`}
-        type="search"
+        type="text"
+        role="searchbox"
+        inputMode="search"
         autoComplete="off"
         autoFocus={autoFocus}
+        suppressHydrationWarning
         value={query}
         placeholder={placeholder}
         onChange={(event) => {
@@ -124,10 +136,10 @@ export function CustomerPhoneSearch({
         }}
         className="min-h-14 w-full rounded-xl border border-zinc-300 px-4 py-3 text-lg text-zinc-900 outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900"
       />
-      {loading ? (
+      {mounted && loading ? (
         <p className="mt-1 text-xs text-zinc-600">Searching…</p>
       ) : null}
-      {open && results.length > 0 ? (
+      {mounted && open && results.length > 0 ? (
         <ul
           id={listId}
           role="listbox"
@@ -163,7 +175,7 @@ export function CustomerPhoneSearch({
           ))}
         </ul>
       ) : null}
-      {open && !loading && query.trim().length >= minChars && results.length === 0 ? (
+      {mounted && open && !loading && query.trim().length >= minChars && results.length === 0 ? (
         <p className="absolute z-20 mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 shadow-lg">
           No customers match that name or phone.
         </p>

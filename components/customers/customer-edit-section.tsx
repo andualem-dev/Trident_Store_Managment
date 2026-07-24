@@ -53,12 +53,7 @@ export function CustomerEditSection({ customer, isAdmin, onUpdated }: Props) {
       onSubmit={handleSubmit}
       className="space-y-4 border-t border-zinc-200 pt-4"
     >
-      <div>
-        <h3 className="text-sm font-semibold text-zinc-900">Customer details</h3>
-        <p className="mt-1 text-xs text-zinc-600">
-          Operators and admins can update name and phone.
-        </p>
-      </div>
+      <h3 className="text-sm font-semibold text-zinc-900">Customer details</h3>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
@@ -101,9 +96,7 @@ export function CustomerEditSection({ customer, isAdmin, onUpdated }: Props) {
           Blacklisted customer
         </label>
       ) : customer.isBlacklisted ? (
-        <p className="text-sm font-medium text-red-700">
-          This customer is blacklisted (admin can change this).
-        </p>
+        <p className="text-sm font-medium text-red-700">Blacklisted</p>
       ) : null}
 
       {error ? (
