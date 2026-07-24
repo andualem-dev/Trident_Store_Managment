@@ -40,6 +40,12 @@ export default async function AdminPage() {
           Customers
         </Link>
         <Link
+          href="/admin/operators"
+          className="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-base font-medium text-zinc-900 hover:bg-zinc-50"
+        >
+          Operators
+        </Link>
+        <Link
           href="/admin/equipment"
           className="rounded-xl border border-zinc-200 bg-white px-5 py-4 text-base font-medium text-zinc-900 hover:bg-zinc-50"
         >
