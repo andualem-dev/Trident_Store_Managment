@@ -3,9 +3,9 @@ import fs from "fs/promises";
 import path from "path";
 
 import {
-  getSupabaseStorageBucket,
-  getSupabaseStorageClient,
+  downloadFromSupabaseStorage,
   isSupabaseStorageConfigured,
+  uploadToSupabaseStorage,
 } from "@/lib/supabase-storage";
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
@@ -37,7 +37,7 @@ function requireUploadStorage() {
 
   if (isVercelRuntime()) {
     throw new Error(
-      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SECRET_KEY (sb_secret_...), SUPABASE_SERVICE_ROLE_KEY (legacy service_role JWT), and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
+      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (legacy service_role JWT), and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
     );
   }
 }
@@ -102,17 +102,7 @@ export async function saveCustomerImage(
   const buffer = Buffer.from(await file.arrayBuffer());
 
   if (isSupabaseStorageConfigured()) {
-    const storage = getSupabaseStorageClient();
-    const bucket = getSupabaseStorageBucket();
-    const { error } = await storage.from(bucket).upload(relativePath, buffer, {
-      contentType: file.type,
-      upsert: false,
-    });
-
-    if (error) {
-      throw new Error(error.message || "Photo upload failed.");
-    }
-
+    await uploadToSupabaseStorage(relativePath, buffer, file.type);
     return relativePath;
   }
 
@@ -135,17 +125,14 @@ export async function readUpload(
 
   if (isSupabaseStorageConfigured()) {
     try {
-      const storage = getSupabaseStorageClient();
-      const bucket = getSupabaseStorageBucket();
-      const { data, error } = await storage.from(bucket).download(key);
-
-      if (error || !data) {
+      const result = await downloadFromSupabaseStorage(key);
+      if (!result) {
         return null;
       }
 
       return {
-        data: Buffer.from(await data.arrayBuffer()),
-        contentType: data.type || contentTypeForKey(key),
+        data: result.data,
+        contentType: result.contentType || contentTypeForKey(key),
       };
     } catch {
       return null;

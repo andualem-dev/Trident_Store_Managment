@@ -1,62 +1,70 @@
-import { StorageClient } from "@supabase/storage-js";
-
 const DEFAULT_BUCKET = "Trident_Store_Images";
 
-function isLegacyJwt(key: string) {
+function isServiceRoleJwt(key: string) {
   return key.startsWith("eyJ");
 }
 
-function getSupabaseStorageCredentials() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
-  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim() || "";
+function getSupabaseUrl() {
+  return process.env.SUPABASE_URL?.trim().replace(/\/$/, "") || "";
+}
 
-  const jwt =
-    (isLegacyJwt(serviceRoleKey) ? serviceRoleKey : "") ||
-    (isLegacyJwt(secretKey) ? secretKey : "");
+/** Legacy service_role JWT only — sb_secret keys must not be used for Storage auth. */
+export function getSupabaseServiceRoleJwt() {
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+  const secret = process.env.SUPABASE_SECRET_KEY?.trim() || "";
 
-  if (!jwt) {
-    throw new Error(
-      "Supabase Storage needs a legacy service_role JWT. " +
-        "Supabase → Settings → API → Legacy API keys → copy service_role into SUPABASE_SERVICE_ROLE_KEY. " +
-        "sb_secret_... keys cannot be used in the Authorization header.",
-    );
+  if (isServiceRoleJwt(serviceRole)) {
+    return serviceRole;
+  }
+  if (isServiceRoleJwt(secret)) {
+    return secret;
   }
 
-  // Storage accepts the legacy JWT for both headers. sb_secret is not a JWT and
-  // must never be sent as Authorization (Invalid Compact JWS).
-  return { apiKey: jwt, authToken: jwt };
+  throw new Error(
+    "Supabase photo storage requires SUPABASE_SERVICE_ROLE_KEY (legacy service_role JWT). " +
+      "Supabase → Settings → API → Legacy API keys → copy service_role. " +
+      "Do not use sb_secret_... for Storage Authorization.",
+  );
 }
 
-function supabaseStorageHeaders(apiKey: string, authToken: string) {
+function storageAuthHeaders(jwt: string) {
   return {
-    apikey: apiKey,
-    Authorization: `Bearer ${authToken}`,
+    apikey: jwt,
+    Authorization: `Bearer ${jwt}`,
   };
 }
 
-function createSupabaseStorageFetch(
-  apiKey: string,
-  authToken: string,
-): typeof fetch {
-  return async (input, init) => {
-    const headers = new Headers(init?.headers);
-    headers.set("apikey", apiKey);
+function storageObjectUrl(bucket: string, objectPath: string) {
+  const encodedBucket = encodeURIComponent(bucket);
+  const encodedPath = objectPath
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/");
 
-    if (!headers.has("Authorization")) {
-      headers.set("Authorization", `Bearer ${authToken}`);
-    }
+  return `${getSupabaseUrl()}/storage/v1/object/${encodedBucket}/${encodedPath}`;
+}
 
-    return fetch(input, { ...init, headers });
-  };
+function parseStorageError(body: string, status: number) {
+  try {
+    const json = JSON.parse(body) as {
+      message?: string;
+      error?: string;
+      statusCode?: string;
+    };
+    return json.message || json.error || `Storage request failed (${status})`;
+  } catch {
+    return body.trim() || `Storage request failed (${status})`;
+  }
 }
 
 export function isSupabaseStorageConfigured() {
-  if (!process.env.SUPABASE_URL?.trim()) {
+  if (!getSupabaseUrl()) {
     return false;
   }
 
   try {
-    getSupabaseStorageCredentials();
+    getSupabaseServiceRoleJwt();
     return true;
   } catch {
     return false;
@@ -67,22 +75,48 @@ export function getSupabaseStorageBucket() {
   return process.env.SUPABASE_STORAGE_BUCKET?.trim() || DEFAULT_BUCKET;
 }
 
-export function getSupabaseStorageClient() {
-  if (!process.env.SUPABASE_URL?.trim()) {
-    throw new Error("Supabase Storage is not configured.");
+export async function uploadToSupabaseStorage(
+  objectPath: string,
+  body: Buffer,
+  contentType: string,
+) {
+  const jwt = getSupabaseServiceRoleJwt();
+  const bucket = getSupabaseStorageBucket();
+  const url = storageObjectUrl(bucket, objectPath);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...storageAuthHeaders(jwt),
+      "content-type": contentType,
+      "cache-control": "max-age=3600",
+      "x-upsert": "false",
+    },
+    body: new Uint8Array(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(parseStorageError(await response.text(), response.status));
   }
-
-  const baseUrl = process.env.SUPABASE_URL!.trim().replace(/\/$/, "");
-  const { apiKey, authToken } = getSupabaseStorageCredentials();
-
-  return new StorageClient(
-    `${baseUrl}/storage/v1`,
-    supabaseStorageHeaders(apiKey, authToken),
-    createSupabaseStorageFetch(apiKey, authToken),
-  );
 }
 
-/** @deprecated Use getSupabaseStorageClient() */
-export function getSupabaseAdminClient() {
-  return getSupabaseStorageClient();
+export async function downloadFromSupabaseStorage(objectPath: string) {
+  const jwt = getSupabaseServiceRoleJwt();
+  const bucket = getSupabaseStorageBucket();
+  const url = storageObjectUrl(bucket, objectPath);
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: storageAuthHeaders(jwt),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = Buffer.from(await response.arrayBuffer());
+  return {
+    data,
+    contentType: response.headers.get("content-type") || "application/octet-stream",
+  };
 }
