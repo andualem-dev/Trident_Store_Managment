@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getIronSession } from "iron-session";
 
-import { type SessionData, sessionOptions } from "@/lib/session";
+import { type SessionData, getSessionOptions } from "@/lib/session";
 
 const publicPaths = ["/login"];
 
@@ -31,6 +31,18 @@ export async function middleware(request: NextRequest) {
   }
 
   const response = NextResponse.next();
+
+  let sessionOptions;
+  try {
+    sessionOptions = getSessionOptions();
+  } catch (error) {
+    console.error("Session configuration error:", error);
+    return new NextResponse(
+      "Server misconfigured: set SESSION_SECRET (32+ characters) in Vercel environment variables, then redeploy.",
+      { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } },
+    );
+  }
+
   const session = await getIronSession<SessionData>(
     request,
     response,

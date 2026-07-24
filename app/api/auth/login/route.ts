@@ -6,7 +6,7 @@ import { findOperatorByPassword } from "@/lib/auth";
 import {
   defaultSession,
   type SessionData,
-  sessionOptions,
+  getSessionOptions,
 } from "@/lib/session";
 
 export async function POST(request: Request) {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const session = await getIronSession<SessionData>(
     await cookies(),
-    sessionOptions,
+    getSessionOptions(),
   );
 
   session.operatorId = operator.id;
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   const session = await getIronSession<SessionData>(
     await cookies(),
-    sessionOptions,
+    getSessionOptions(),
   );
 
   Object.assign(session, defaultSession);

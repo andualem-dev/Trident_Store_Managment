@@ -4,14 +4,14 @@ import { cookies } from "next/headers";
 import {
   defaultSession,
   type SessionData,
-  sessionOptions,
+  getSessionOptions,
 } from "@/lib/session";
 
 export async function getSession() {
   const cookieStore = await cookies();
   const session = await getIronSession<SessionData>(
     cookieStore,
-    sessionOptions,
+    getSessionOptions(),
   );
 
   if (!session.isLoggedIn) {
