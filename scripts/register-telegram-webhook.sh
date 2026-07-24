@@ -11,9 +11,9 @@ WEBHOOK_URL="${BASE}/api/telegram/webhook"
 
 echo "Registering webhook: ${WEBHOOK_URL}"
 
-RESPONSE="$(curl -sS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
-  -d "url=${WEBHOOK_URL}" \
-  -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}")"
+RESPONSE="$(curl -sS -G "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+  --data-urlencode "url=${WEBHOOK_URL}" \
+  --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET}")"
 
 echo "${RESPONSE}" | python3 -m json.tool 2>/dev/null || echo "${RESPONSE}"
 

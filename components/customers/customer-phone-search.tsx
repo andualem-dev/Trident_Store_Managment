@@ -13,20 +13,20 @@ export type CustomerPhoneSearchProps = {
   selectedCustomer?: CustomerSummary | null;
   placeholder?: string;
   label?: string;
-  minDigits?: number;
+  minChars?: number;
   autoFocus?: boolean;
 };
 
 export function CustomerPhoneSearch({
   onSelect,
   selectedCustomer = null,
-  placeholder = "Search by phone…",
-  label = "Customer phone search",
-  minDigits = 2,
+  placeholder = "Search by name or phone…",
+  label = "Search customer",
+  minChars = 2,
   autoFocus = false,
 }: CustomerPhoneSearchProps) {
   const listId = useId();
-  const [query, setQuery] = useState(selectedCustomer?.phone ?? "");
+  const [query, setQuery] = useState(selectedCustomer?.name ?? "");
   const [results, setResults] = useState<CustomerSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -47,7 +47,7 @@ export function CustomerPhoneSearch({
 
   useEffect(() => {
     const trimmed = query.trim();
-    if (trimmed.length < minDigits) {
+    if (trimmed.length < minChars) {
       return;
     }
 
@@ -57,7 +57,7 @@ export function CustomerPhoneSearch({
       setLoading(true);
       try {
         const response = await fetch(
-          `/api/customers/search?phone=${encodeURIComponent(trimmed)}`,
+          `/api/customers/search?q=${encodeURIComponent(trimmed)}`,
           { signal: controller.signal },
         );
         if (!response.ok) {
@@ -82,11 +82,11 @@ export function CustomerPhoneSearch({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, minDigits]);
+  }, [query, minChars]);
 
   function handleSelect(customer: CustomerSummary) {
     onSelect(customer);
-    setQuery(customer.phone);
+    setQuery(customer.name);
     setOpen(false);
   }
 
@@ -97,8 +97,7 @@ export function CustomerPhoneSearch({
       </label>
       <input
         id={`${listId}-input`}
-        type="tel"
-        inputMode="tel"
+        type="search"
         autoComplete="off"
         autoFocus={autoFocus}
         value={query}
@@ -106,7 +105,7 @@ export function CustomerPhoneSearch({
         onChange={(event) => {
           const value = event.target.value;
           setQuery(value);
-          if (value.trim().length < minDigits) {
+          if (value.trim().length < minChars) {
             setResults([]);
             setLoading(false);
           }
@@ -151,9 +150,9 @@ export function CustomerPhoneSearch({
           ))}
         </ul>
       ) : null}
-      {open && !loading && query.trim().length >= minDigits && results.length === 0 ? (
+      {open && !loading && query.trim().length >= minChars && results.length === 0 ? (
         <p className="absolute z-20 mt-1 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 shadow-lg">
-          No customers match that phone.
+          No customers match that name or phone.
         </p>
       ) : null}
     </div>

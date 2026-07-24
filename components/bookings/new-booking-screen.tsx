@@ -186,8 +186,8 @@ export function NewBookingScreen({
                     setCustomer(selection);
                     setError(null);
                   }}
-                  label="Search customer by phone"
-                  placeholder="Type phone number…"
+                  label="Search customer by name"
+                  placeholder="Type customer name…"
                 />
               </div>
             )}

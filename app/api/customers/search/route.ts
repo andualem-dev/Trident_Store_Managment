@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  normalizeCustomerSearchQuery,
+  rankCustomerMatches,
+} from "@/lib/customer-search";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session-server";
 
@@ -9,17 +13,31 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const query = request.nextUrl.searchParams.get("phone")?.trim() ?? "";
+  const params = request.nextUrl.searchParams;
+  const query = normalizeCustomerSearchQuery(
+    params.get("q") ?? params.get("phone"),
+  );
+
   if (query.length < 2) {
     return NextResponse.json({ customers: [] });
   }
 
-  const customers = await prisma.customer.findMany({
+  const matches = await prisma.customer.findMany({
     where: {
-      phone: {
-        contains: query,
-        mode: "insensitive",
-      },
+      OR: [
+        {
+          name: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+        {
+          phone: {
+            contains: query,
+            mode: "insensitive",
+          },
+        },
+      ],
     },
     select: {
       id: true,
@@ -27,9 +45,10 @@ export async function GET(request: NextRequest) {
       phone: true,
       isBlacklisted: true,
     },
-    orderBy: [{ name: "asc" }],
-    take: 12,
+    take: 24,
   });
+
+  const customers = rankCustomerMatches(matches, query).slice(0, 12);
 
   return NextResponse.json({ customers });
 }
