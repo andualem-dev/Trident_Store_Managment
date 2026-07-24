@@ -3,10 +3,10 @@ import fs from "fs/promises";
 import path from "path";
 
 import {
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+  getSupabaseAdminClient,
+  getSupabaseStorageBucket,
+  isSupabaseStorageConfigured,
+} from "@/lib/supabase-storage";
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 
@@ -26,44 +26,24 @@ function extensionForMime(mime: string): string | null {
   }
 }
 
-function isR2Configured() {
-  return Boolean(
-    process.env.R2_ACCOUNT_ID &&
-      process.env.R2_ACCESS_KEY_ID &&
-      process.env.R2_SECRET_ACCESS_KEY &&
-      process.env.R2_BUCKET_NAME,
-  );
+function isVercelRuntime() {
+  return process.env.VERCEL === "1";
 }
 
-function getR2Client() {
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-
-  if (!accountId || !accessKeyId || !secretAccessKey) {
-    throw new Error("R2 storage is not configured.");
+function requireUploadStorage() {
+  if (isSupabaseStorageConfigured()) {
+    return;
   }
 
-  return new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-  });
-}
-
-function getR2Bucket() {
-  const bucket = process.env.R2_BUCKET_NAME;
-  if (!bucket) {
-    throw new Error("R2_BUCKET_NAME is not configured.");
+  if (isVercelRuntime()) {
+    throw new Error(
+      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
+    );
   }
-  return bucket;
 }
 
 export function isObjectStorageEnabled() {
-  return isR2Configured();
+  return isSupabaseStorageConfigured();
 }
 
 export function getUploadRoot() {
@@ -121,18 +101,22 @@ export async function saveCustomerImage(
   );
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  if (isR2Configured()) {
-    const client = getR2Client();
-    await client.send(
-      new PutObjectCommand({
-        Bucket: getR2Bucket(),
-        Key: relativePath,
-        Body: buffer,
-        ContentType: file.type,
-      }),
-    );
+  if (isSupabaseStorageConfigured()) {
+    const supabase = getSupabaseAdminClient();
+    const bucket = getSupabaseStorageBucket();
+    const { error } = await supabase.storage.from(bucket).upload(relativePath, buffer, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+    if (error) {
+      throw new Error(error.message || "Photo upload failed.");
+    }
+
     return relativePath;
   }
+
+  requireUploadStorage();
 
   const absolutePath = path.join(UPLOAD_ROOT, relativePath);
   await fs.mkdir(path.dirname(absolutePath), { recursive: true });
@@ -149,23 +133,19 @@ export async function readUpload(
     return null;
   }
 
-  if (isR2Configured()) {
+  if (isSupabaseStorageConfigured()) {
     try {
-      const client = getR2Client();
-      const object = await client.send(
-        new GetObjectCommand({
-          Bucket: getR2Bucket(),
-          Key: key,
-        }),
-      );
+      const supabase = getSupabaseAdminClient();
+      const bucket = getSupabaseStorageBucket();
+      const { data, error } = await supabase.storage.from(bucket).download(key);
 
-      if (!object.Body) {
+      if (error || !data) {
         return null;
       }
 
       return {
-        data: Buffer.from(await object.Body.transformToByteArray()),
-        contentType: object.ContentType ?? contentTypeForKey(key),
+        data: Buffer.from(await data.arrayBuffer()),
+        contentType: data.type || contentTypeForKey(key),
       };
     } catch {
       return null;
@@ -206,7 +186,7 @@ function contentTypeForKey(key: string) {
 /** @deprecated Use normalizeUploadKey / readUpload instead. */
 export function resolveUploadPath(relativePath: string): string | null {
   const key = normalizeUploadKey(relativePath);
-  if (!key || isR2Configured()) {
+  if (!key || isSupabaseStorageConfigured()) {
     return null;
   }
 

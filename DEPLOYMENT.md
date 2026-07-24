@@ -25,12 +25,11 @@ Set these in the Vercel project (or on your VPS). Copy `.env.example` as a templ
 | `TELEGRAM_ADMIN_CHAT_ID` | Chat ID allowed to receive reports and run bot commands |
 | `TELEGRAM_WEBHOOK_SECRET` | Random string passed to Telegram `setWebhook` as `secret_token` |
 | `CRON_SECRET` | Bearer token for scheduled report routes (see [Cron jobs](#cron-jobs)) |
-| `R2_ACCOUNT_ID` | Cloudflare account ID (R2 S3 endpoint) |
-| `R2_ACCESS_KEY_ID` | R2 API token access key |
-| `R2_SECRET_ACCESS_KEY` | R2 API token secret |
-| `R2_BUCKET_NAME` | R2 bucket for customer ID/profile photos |
+| `SUPABASE_URL` | Supabase project URL (Settings → API) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only — never expose to the browser) |
+| `SUPABASE_STORAGE_BUCKET` | Private Storage bucket name (default: `customer-photos`) |
 
-When all `R2_*` variables are set, photos upload to R2. If they are omitted (local dev), files are stored under `./uploads/` instead.
+When `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set, photos upload to Supabase Storage. If they are omitted (local dev), files are stored under `./uploads/` instead.
 
 Optional for local development only: none of the above should be committed. `.env` is gitignored.
 
@@ -157,20 +156,25 @@ Photos are stored as object keys like `customers/{customerId}/id-card-{hash}.jpg
 
 | Environment | Storage |
 | --- | --- |
-| **Vercel (production)** | Cloudflare R2 — set all `R2_*` env vars |
-| **Local dev** | `./uploads/` on disk when `R2_*` is not set |
+| **Vercel (production)** | Supabase Storage — set `SUPABASE_*` env vars |
+| **Local dev** | `./uploads/` on disk when Supabase is not configured |
 
-### Cloudflare R2 setup (Vercel)
+### Supabase Storage setup (Vercel)
 
-1. In Cloudflare dashboard: **R2 → Create bucket** (e.g. `trident-store-uploads`).
-2. **Manage R2 API tokens → Create API token** with Object Read & Write on that bucket.
-3. Set in Vercel:
-   - `R2_ACCOUNT_ID` — from Cloudflare dashboard URL / overview
-   - `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` — from the token
-   - `R2_BUCKET_NAME` — bucket name
-4. No public bucket URL is required; the app reads objects server-side via the S3 API.
+1. Sign up at [supabase.com](https://supabase.com) (no credit card on free tier).
+2. **New project** → wait for it to finish provisioning.
+3. **Storage** → **New bucket** → name `customer-photos` → **Private** → Create.
+4. **Project Settings → API** → copy:
+   - **Project URL** → `SUPABASE_URL`
+   - **service_role** key (secret) → `SUPABASE_SERVICE_ROLE_KEY`
+5. Add those to Vercel (and optionally `SUPABASE_STORAGE_BUCKET=customer-photos`).
+6. **Redeploy** after saving env vars.
 
-Existing local files in `./uploads/` are **not** migrated automatically. Re-upload customer photos or copy objects into the bucket with the same key paths if migrating from a local install.
+Photos are read server-side through `/api/uploads/...` (session-protected). The bucket stays private.
+
+**Note:** Free Supabase projects pause after ~7 days of inactivity. Unpause in the dashboard if uploads suddenly fail.
+
+Existing local files in `./uploads/` are **not** migrated automatically. Re-upload customer photos or copy objects into the bucket using the same key paths (`customers/{id}/...`).
 
 ---
 
@@ -198,7 +202,7 @@ Fix any TypeScript or build errors locally first. The build runs `prisma generat
 
 ---
 
-## Step-by-step first deploy (Vercel + Neon + R2)
+## Step-by-step first deploy (Vercel + Neon + Supabase Storage)
 
 Follow these in order. Total time: roughly 30–45 minutes.
 
@@ -235,26 +239,19 @@ npm run db:seed
 
 Sign in with `ADMIN` / `admin123` once live, then change that password.
 
-### Step C — Cloudflare R2 (customer photos)
+### Step C — Supabase Storage (customer photos)
 
-1. Log in to [Cloudflare Dashboard](https://dash.cloudflare.com) → **R2 Object Storage**.
-2. **Create bucket** → name it e.g. `trident-store-uploads` → Create.
-3. Open **Manage R2 API Tokens** → **Create API token**:
-   - Permission: **Object Read & Write**
-   - Scope: this bucket only
-   - Create token → copy **Access Key ID** and **Secret Access Key** (shown once).
-4. Find your **Account ID** (R2 overview page or URL: `dash.cloudflare.com/<account-id>/r2`).
+1. Sign up at [https://supabase.com](https://supabase.com) and create a project.
+2. **Storage → New bucket** → name `customer-photos` → **Private** → Create.
+3. **Project Settings → API** → copy Project URL and **service_role** key.
 
-Save these four values for Vercel:
+Save for Vercel:
 
 | Vercel env var | Value |
 | --- | --- |
-| `R2_ACCOUNT_ID` | Cloudflare account ID |
-| `R2_ACCESS_KEY_ID` | From API token |
-| `R2_SECRET_ACCESS_KEY` | From API token |
-| `R2_BUCKET_NAME` | e.g. `trident-store-uploads` |
-
-No public bucket domain is needed — the app reads files server-side.
+| `SUPABASE_URL` | Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role key |
+| `SUPABASE_STORAGE_BUCKET` | `customer-photos` (optional if using default) |
 
 ### Step D — Generate secrets
 
@@ -283,10 +280,9 @@ Reuse your existing `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ADMIN_CHAT_ID` from local
 | `TELEGRAM_ADMIN_CHAT_ID` | your chat ID |
 | `TELEGRAM_WEBHOOK_SECRET` | from Step D |
 | `CRON_SECRET` | from Step D |
-| `R2_ACCOUNT_ID` | from Step C |
-| `R2_ACCESS_KEY_ID` | from Step C |
-| `R2_SECRET_ACCESS_KEY` | from Step C |
-| `R2_BUCKET_NAME` | from Step C |
+| `SUPABASE_URL` | from Step C |
+| `SUPABASE_SERVICE_ROLE_KEY` | from Step C |
+| `SUPABASE_STORAGE_BUCKET` | `customer-photos` |
 
 5. Click **Deploy** and wait for the build to finish.
 6. Note your production URL (e.g. `https://trident-store-managment.vercel.app`).
@@ -319,7 +315,7 @@ Expect JSON with `"ok": true`. A Telegram message may arrive if there is report 
 ### Step H — Verify the app
 
 1. Open `https://YOUR-APP.vercel.app/login` → sign in as `ADMIN` / `admin123`.
-2. Create a test customer with a photo → confirms R2 upload works.
+2. Create a test customer with a photo → confirms Supabase Storage works.
 3. Run a test rental flow.
 4. Check Vercel **Logs** if anything fails.
 
@@ -329,7 +325,7 @@ Expect JSON with `"ok": true`. A Telegram message may arrive if there is report 
 | --- | --- |
 | Build fails on Prisma | Ensure `DATABASE_URL` is set in Vercel; build only needs `prisma generate`. |
 | Login works locally but not prod | `SESSION_SECRET` must be set in Vercel; redeploy after adding env vars. |
-| Photos fail on customer create | All four `R2_*` vars must be set; check Vercel function logs for S3 errors. |
+| Photos fail on customer create | Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; bucket must exist and be private; redeploy after env changes. |
 | Telegram commands ignored | Webhook `secret_token` must match `TELEGRAM_WEBHOOK_SECRET`; chat ID must match `TELEGRAM_ADMIN_CHAT_ID`. |
 | Cron 401 | `CRON_SECRET` in Vercel must match; header is `Authorization: Bearer <secret>`. |
 | Daily report wrong time | Cron uses UTC; `0 21 * * *` = 21:00 UTC (midnight EAT). Edit `vercel.json` if needed. |
