@@ -28,6 +28,14 @@ function parseDailyRate(value: string): number | null {
   return Math.round(parsed * 100) / 100;
 }
 
+function parseQuantity(value: string): number | null {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1 || parsed > 100) {
+    return null;
+  }
+  return parsed;
+}
+
 function normalizeCategory(category: string, customCategory: string): string | null {
   const trimmed = category.trim();
   if (!trimmed) {
@@ -52,6 +60,7 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
       String(formData.get("customCategory") ?? ""),
     );
     const dailyRate = parseDailyRate(String(formData.get("dailyRate") ?? ""));
+    const quantity = parseQuantity(String(formData.get("quantity") ?? "1"));
 
     if (!name) {
       return { ok: false, error: "Name is required." };
@@ -62,26 +71,30 @@ export async function createEquipment(formData: FormData): Promise<ActionResult>
     if (dailyRate === null) {
       return { ok: false, error: "Daily rate must be a positive number." };
     }
+    if (quantity === null) {
+      return { ok: false, error: "Quantity must be between 1 and 100." };
+    }
 
-    const equipment = await prisma.equipment.create({
-      data: {
+    const created = await prisma.equipment.createMany({
+      data: Array.from({ length: quantity }, () => ({
         name,
         category,
         dailyRate,
         status: EquipmentStatus.AVAILABLE,
-      },
+      })),
     });
 
     await logAudit({
       operatorId: session.operatorId,
       action: "CREATE",
       entityType: "Equipment",
-      entityId: equipment.id,
+      entityId: name,
       details: {
         name,
         category,
         dailyRate,
-        status: equipment.status,
+        quantity: created.count,
+        status: EquipmentStatus.AVAILABLE,
       },
     });
 

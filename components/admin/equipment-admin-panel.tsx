@@ -63,6 +63,7 @@ type FormState = {
   category: EquipmentCategoryPreset;
   customCategory: string;
   dailyRate: string;
+  quantity: string;
 };
 
 const emptyForm: FormState = {
@@ -70,6 +71,7 @@ const emptyForm: FormState = {
   category: "Camera",
   customCategory: "",
   dailyRate: "",
+  quantity: "1",
 };
 
 export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }) {
@@ -94,6 +96,7 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
       category: preset,
       customCategory: preset === "Other" ? row.category : "",
       dailyRate: row.dailyRate,
+      quantity: "1",
     });
     setFormError(null);
     setFormMode("edit");
@@ -134,6 +137,7 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
       return;
     }
 
+    payload.set("quantity", form.quantity);
     runAction(() => createEquipment(payload), closeForm);
   }
 
@@ -334,6 +338,26 @@ export function EquipmentAdminPanel({ equipment }: { equipment: EquipmentRow[] }
                         ...current,
                         customCategory: event.target.value,
                       }))
+                    }
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                  />
+                </div>
+              ) : null}
+              {formMode === "create" ? (
+                <div>
+                  <label htmlFor="eq-quantity" className="mb-1 block text-sm font-medium">
+                    Quantity
+                  </label>
+                  <input
+                    id="eq-quantity"
+                    type="number"
+                    min={1}
+                    max={100}
+                    step={1}
+                    required
+                    value={form.quantity}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, quantity: event.target.value }))
                     }
                     className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
                   />
