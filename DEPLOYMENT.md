@@ -25,11 +25,12 @@ Set these in the Vercel project (or on your VPS). Copy `.env.example` as a templ
 | `TELEGRAM_ADMIN_CHAT_ID` | Chat ID allowed to receive reports and run bot commands |
 | `TELEGRAM_WEBHOOK_SECRET` | Random string passed to Telegram `setWebhook` as `secret_token` |
 | `CRON_SECRET` | Bearer token for scheduled report routes (see [Cron jobs](#cron-jobs)) |
-| `SUPABASE_URL` | Supabase project URL (Settings → API) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server only — never expose to the browser) |
-| `SUPABASE_STORAGE_BUCKET` | Private Storage bucket name (default: `customer-photos`) |
+| `SUPABASE_URL` | Supabase project URL (Settings → General) |
+| `SUPABASE_SECRET_KEY` | Supabase **Secret** key (`sb_secret_...`) from Settings → API Keys (server only) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Legacy name — same as `SUPABASE_SECRET_KEY` (JWT `service_role` also works) |
+| `SUPABASE_STORAGE_BUCKET` | Private Storage bucket name (default: `Trident_Store_Images`) |
 
-When `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set, photos upload to Supabase Storage. If they are omitted (local dev), files are stored under `./uploads/` instead.
+When `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (or legacy `SUPABASE_SERVICE_ROLE_KEY`) are set, photos upload to Supabase Storage. If they are omitted (local dev), files are stored under `./uploads/` instead.
 
 Optional for local development only: none of the above should be committed. `.env` is gitignored.
 
@@ -163,12 +164,12 @@ Photos are stored as object keys like `customers/{customerId}/id-card-{hash}.jpg
 
 1. Sign up at [supabase.com](https://supabase.com) (no credit card on free tier).
 2. **New project** → wait for it to finish provisioning.
-3. **Storage** → **New bucket** → name `customer-photos` → **Private** → Create.
-4. **Project Settings → API** → copy:
-   - **Project URL** → `SUPABASE_URL`
-   - **service_role** key (secret) → `SUPABASE_SERVICE_ROLE_KEY`
-5. Add those to Vercel (and optionally `SUPABASE_STORAGE_BUCKET=customer-photos`).
-6. **Redeploy** after saving env vars.
+3. **Storage** → **New bucket** → name `Trident_Store_Images` → **Private** → Create.
+4. **Project Settings → General** → copy **Project URL** → `SUPABASE_URL`
+5. **Project Settings → API Keys** → copy **Secret key** (`sb_secret_...`) → `SUPABASE_SECRET_KEY`  
+   (Legacy **service_role** JWT also works as `SUPABASE_SERVICE_ROLE_KEY`.)
+6. Add those to Vercel (and optionally `SUPABASE_STORAGE_BUCKET=Trident_Store_Images`).
+7. **Redeploy** after saving env vars.
 
 Photos are read server-side through `/api/uploads/...` (session-protected). The bucket stays private.
 
@@ -242,16 +243,16 @@ Sign in with `ADMIN` / `admin123` once live, then change that password.
 ### Step C — Supabase Storage (customer photos)
 
 1. Sign up at [https://supabase.com](https://supabase.com) and create a project.
-2. **Storage → New bucket** → name `customer-photos` → **Private** → Create.
-3. **Project Settings → API** → copy Project URL and **service_role** key.
+2. **Storage → New bucket** → name `Trident_Store_Images` → **Private** → Create.
+3. **Project Settings → General** → Project URL; **API Keys** → Secret key (`sb_secret_...`).
 
 Save for Vercel:
 
 | Vercel env var | Value |
 | --- | --- |
-| `SUPABASE_URL` | Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | service_role key |
-| `SUPABASE_STORAGE_BUCKET` | `customer-photos` (optional if using default) |
+| `SUPABASE_URL` | `https://lefzgeppktbiletlhlek.supabase.co` (your project) |
+| `SUPABASE_SECRET_KEY` | Secret key from API Keys (not the publishable key) |
+| `SUPABASE_STORAGE_BUCKET` | `Trident_Store_Images` (optional if using default) |
 
 ### Step D — Generate secrets
 
@@ -281,8 +282,8 @@ Reuse your existing `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ADMIN_CHAT_ID` from local
 | `TELEGRAM_WEBHOOK_SECRET` | from Step D |
 | `CRON_SECRET` | from Step D |
 | `SUPABASE_URL` | from Step C |
-| `SUPABASE_SERVICE_ROLE_KEY` | from Step C |
-| `SUPABASE_STORAGE_BUCKET` | `customer-photos` |
+| `SUPABASE_SECRET_KEY` | from Step C |
+| `SUPABASE_STORAGE_BUCKET` | `Trident_Store_Images` |
 
 5. Click **Deploy** and wait for the build to finish.
 6. Note your production URL (e.g. `https://trident-store-managment.vercel.app`).
@@ -325,7 +326,7 @@ Expect JSON with `"ok": true`. A Telegram message may arrive if there is report 
 | --- | --- |
 | Build fails on Prisma | Ensure `DATABASE_URL` is set in Vercel; build only needs `prisma generate`. |
 | Login works locally but not prod | `SESSION_SECRET` must be set in Vercel; redeploy after adding env vars. |
-| Photos fail on customer create | Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; bucket must exist and be private; redeploy after env changes. |
+| Photos fail on customer create | Set `SUPABASE_URL` and `SUPABASE_SECRET_KEY`; create private bucket `Trident_Store_Images`; redeploy after env changes. |
 | Telegram commands ignored | Webhook `secret_token` must match `TELEGRAM_WEBHOOK_SECRET`; chat ID must match `TELEGRAM_ADMIN_CHAT_ID`. |
 | Cron 401 | `CRON_SECRET` in Vercel must match; header is `Authorization: Bearer <secret>`. |
 | Daily report wrong time | Cron uses UTC; `0 21 * * *` = 21:00 UTC (midnight EAT). Edit `vercel.json` if needed. |

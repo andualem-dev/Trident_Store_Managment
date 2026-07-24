@@ -3,8 +3,8 @@ import fs from "fs/promises";
 import path from "path";
 
 import {
-  getSupabaseAdminClient,
   getSupabaseStorageBucket,
+  getSupabaseStorageClient,
   isSupabaseStorageConfigured,
 } from "@/lib/supabase-storage";
 
@@ -37,7 +37,7 @@ function requireUploadStorage() {
 
   if (isVercelRuntime()) {
     throw new Error(
-      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
+      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SECRET_KEY (sb_secret_...), and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
     );
   }
 }
@@ -102,9 +102,9 @@ export async function saveCustomerImage(
   const buffer = Buffer.from(await file.arrayBuffer());
 
   if (isSupabaseStorageConfigured()) {
-    const supabase = getSupabaseAdminClient();
+    const storage = getSupabaseStorageClient();
     const bucket = getSupabaseStorageBucket();
-    const { error } = await supabase.storage.from(bucket).upload(relativePath, buffer, {
+    const { error } = await storage.from(bucket).upload(relativePath, buffer, {
       contentType: file.type,
       upsert: false,
     });
@@ -135,9 +135,9 @@ export async function readUpload(
 
   if (isSupabaseStorageConfigured()) {
     try {
-      const supabase = getSupabaseAdminClient();
+      const storage = getSupabaseStorageClient();
       const bucket = getSupabaseStorageBucket();
-      const { data, error } = await supabase.storage.from(bucket).download(key);
+      const { data, error } = await storage.from(bucket).download(key);
 
       if (error || !data) {
         return null;
