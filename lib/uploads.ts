@@ -18,8 +18,31 @@ export { uploadPublicUrl };
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_INPUT_BYTES = 5 * 1024 * 1024;
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+const ALLOWED_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+]);
+const MAX_INPUT_BYTES = 10 * 1024 * 1024;
+
+function isAllowedCustomerImage(file: File) {
+  if (ALLOWED_MIME.has(file.type)) {
+    return true;
+  }
+
+  const extension = path.extname(file.name).toLowerCase();
+  return ALLOWED_EXTENSIONS.has(extension);
+}
 
 function isVercelRuntime() {
   return process.env.VERCEL === "1";
@@ -70,10 +93,12 @@ export async function saveCustomerImage(
     throw new Error("Empty file");
   }
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error("File too large (max 5MB).");
+    throw new Error("File too large (max 10MB).");
   }
-  if (!ALLOWED_MIME.has(file.type)) {
-    throw new Error("Only JPEG, PNG, or WebP images are allowed.");
+  if (!isAllowedCustomerImage(file)) {
+    throw new Error(
+      "Only JPEG, PNG, WebP, or HEIC (iPhone) images are allowed.",
+    );
   }
 
   const inputBuffer = Buffer.from(await file.arrayBuffer());

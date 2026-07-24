@@ -108,7 +108,7 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
                 <input
                   name="idCardPhoto"
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                   className="block w-full text-sm text-zinc-600"
                 />
               </div>
@@ -122,7 +122,7 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
                 <input
                   name="profilePhoto"
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                   className="block w-full text-sm text-zinc-600"
                 />
               </div>

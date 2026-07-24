@@ -13,6 +13,7 @@ export async function optimizeCustomerImage(
   input: Buffer,
   kind: "id-card" | "profile",
 ): Promise<Buffer> {
+  // Accepts JPEG, PNG, WebP, and iPhone HEIC/HEIF; always outputs WebP.
   const maxWidth = MAX_DIMENSION[kind];
 
   return sharp(input, { failOn: "none" })
