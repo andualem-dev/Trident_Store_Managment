@@ -1,4 +1,4 @@
-import { uploadPublicUrl } from "@/lib/uploads";
+import { uploadPublicUrl } from "@/lib/upload-url";
 
 type CustomerPhotosProps = {
   idCardPhotoUrl?: string | null;

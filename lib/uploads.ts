@@ -7,6 +7,9 @@ import {
   isSupabaseStorageConfigured,
   uploadToSupabaseStorage,
 } from "@/lib/supabase-storage";
+import { uploadPublicUrl } from "@/lib/upload-url";
+
+export { uploadPublicUrl };
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 
@@ -48,13 +51,6 @@ export function isObjectStorageEnabled() {
 
 export function getUploadRoot() {
   return UPLOAD_ROOT;
-}
-
-export function uploadPublicUrl(relativePath: string) {
-  return `/api/uploads/${relativePath
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/")}`;
 }
 
 export function normalizeUploadKey(relativePath: string): string | null {
