@@ -37,7 +37,7 @@ function requireUploadStorage() {
 
   if (isVercelRuntime()) {
     throw new Error(
-      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SECRET_KEY (sb_secret_...), and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
+      "Photo uploads require Supabase Storage on Vercel. Set SUPABASE_URL, SUPABASE_SECRET_KEY (sb_secret_...), SUPABASE_SERVICE_ROLE_KEY (legacy service_role JWT), and optionally SUPABASE_STORAGE_BUCKET, then redeploy.",
     );
   }
 }

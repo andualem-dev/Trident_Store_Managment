@@ -2,34 +2,48 @@ import { StorageClient } from "@supabase/storage-js";
 
 const DEFAULT_BUCKET = "Trident_Store_Images";
 
-let storageClient: StorageClient | null = null;
-
-function getSupabaseSecretKey() {
-  return (
-    process.env.SUPABASE_SECRET_KEY?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    ""
-  );
+function isLegacyJwt(key: string) {
+  return key.startsWith("eyJ");
 }
 
-function supabaseStorageHeaders(supabaseKey: string) {
+function getSupabaseStorageCredentials() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim() || "";
+
+  const jwt =
+    (isLegacyJwt(serviceRoleKey) ? serviceRoleKey : "") ||
+    (isLegacyJwt(secretKey) ? secretKey : "");
+
+  if (!jwt) {
+    throw new Error(
+      "Supabase Storage needs a legacy service_role JWT. " +
+        "Supabase → Settings → API → Legacy API keys → copy service_role into SUPABASE_SERVICE_ROLE_KEY. " +
+        "sb_secret_... keys cannot be used in the Authorization header.",
+    );
+  }
+
+  // Storage accepts the legacy JWT for both headers. sb_secret is not a JWT and
+  // must never be sent as Authorization (Invalid Compact JWS).
+  return { apiKey: jwt, authToken: jwt };
+}
+
+function supabaseStorageHeaders(apiKey: string, authToken: string) {
   return {
-    apikey: supabaseKey,
-    Authorization: `Bearer ${supabaseKey}`,
+    apikey: apiKey,
+    Authorization: `Bearer ${authToken}`,
   };
 }
 
-/**
- * Storage requires both apikey and Authorization. For new sb_secret keys, Supabase
- * accepts Authorization when it matches apikey (see API keys migration docs).
- */
-function createSupabaseStorageFetch(supabaseKey: string): typeof fetch {
+function createSupabaseStorageFetch(
+  apiKey: string,
+  authToken: string,
+): typeof fetch {
   return async (input, init) => {
     const headers = new Headers(init?.headers);
-    headers.set("apikey", supabaseKey);
+    headers.set("apikey", apiKey);
 
     if (!headers.has("Authorization")) {
-      headers.set("Authorization", `Bearer ${supabaseKey}`);
+      headers.set("Authorization", `Bearer ${authToken}`);
     }
 
     return fetch(input, { ...init, headers });
@@ -37,7 +51,16 @@ function createSupabaseStorageFetch(supabaseKey: string): typeof fetch {
 }
 
 export function isSupabaseStorageConfigured() {
-  return Boolean(process.env.SUPABASE_URL?.trim() && getSupabaseSecretKey());
+  if (!process.env.SUPABASE_URL?.trim()) {
+    return false;
+  }
+
+  try {
+    getSupabaseStorageCredentials();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function getSupabaseStorageBucket() {
@@ -45,22 +68,18 @@ export function getSupabaseStorageBucket() {
 }
 
 export function getSupabaseStorageClient() {
-  if (!isSupabaseStorageConfigured()) {
+  if (!process.env.SUPABASE_URL?.trim()) {
     throw new Error("Supabase Storage is not configured.");
   }
 
-  if (!storageClient) {
-    const baseUrl = process.env.SUPABASE_URL!.trim().replace(/\/$/, "");
-    const key = getSupabaseSecretKey();
+  const baseUrl = process.env.SUPABASE_URL!.trim().replace(/\/$/, "");
+  const { apiKey, authToken } = getSupabaseStorageCredentials();
 
-    storageClient = new StorageClient(
-      `${baseUrl}/storage/v1`,
-      supabaseStorageHeaders(key),
-      createSupabaseStorageFetch(key),
-    );
-  }
-
-  return storageClient;
+  return new StorageClient(
+    `${baseUrl}/storage/v1`,
+    supabaseStorageHeaders(apiKey, authToken),
+    createSupabaseStorageFetch(apiKey, authToken),
+  );
 }
 
 /** @deprecated Use getSupabaseStorageClient() */
