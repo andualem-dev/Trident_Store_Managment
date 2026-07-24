@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trident
+      POSTGRES_PASSWORD: trident
+      POSTGRES_DB: trident_store
+    ports:
+      - "5432:5432"
+    volumes:
+      - trident_pg_data:/var/lib/postgresql/data
+
+volumes:
+  trident_pg_data:
