@@ -255,6 +255,144 @@ export async function uploadCustomerProfilePhoto(
   }
 }
 
+export async function uploadCustomerIdCardPhoto(
+  customerId: string,
+  formData: FormData,
+): Promise<CustomerPhotoActionResult> {
+  try {
+    const session = await requireSession();
+
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return { ok: false, error: "Customer not found." };
+    }
+
+    const idCardFile = formData.get("idCardPhoto");
+    if (!(idCardFile instanceof File) || idCardFile.size === 0) {
+      return { ok: false, error: "Choose an ID card photo." };
+    }
+
+    let idCardPhotoUrl: string;
+    try {
+      idCardPhotoUrl = await saveCustomerImage(
+        customerId,
+        "id-card",
+        idCardFile,
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "ID card upload failed.",
+      };
+    }
+
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { idCardPhotoUrl },
+    });
+
+    await logAudit({
+      operatorId: session.operatorId,
+      action: "UPDATE",
+      entityType: "Customer",
+      entityId: customerId,
+      details: { updatedIdCardPhoto: true },
+    });
+
+    revalidatePath("/customers");
+
+    const summary = await loadCustomerSummary(customerId);
+    if (!summary) {
+      return { ok: false, error: "Could not load customer." };
+    }
+
+    return { ok: true, customer: summary };
+  } catch {
+    return { ok: false, error: "Could not upload ID card photo." };
+  }
+}
+
+export async function updateCustomer(
+  customerId: string,
+  formData: FormData,
+): Promise<CustomerActionResult> {
+  try {
+    const session = await requireSession();
+
+    const existing = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, name: true, phone: true, isBlacklisted: true },
+    });
+
+    if (!existing) {
+      return { ok: false, error: "Customer not found." };
+    }
+
+    const name = String(formData.get("name") ?? "").trim();
+    const phone = normalizePhone(String(formData.get("phone") ?? ""));
+
+    if (!name) {
+      return { ok: false, error: "Name is required." };
+    }
+    if (!phone) {
+      return { ok: false, error: "Phone is required." };
+    }
+
+    const updateData: {
+      name: string;
+      phone: string;
+      isBlacklisted?: boolean;
+    } = { name, phone };
+
+    if (formData.has("isBlacklisted")) {
+      if (!session.isAdmin) {
+        return { ok: false, error: "Only admins can change blacklist status." };
+      }
+      updateData.isBlacklisted = formData.get("isBlacklisted") === "true";
+    }
+
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: updateData,
+    });
+
+    await logAudit({
+      operatorId: session.operatorId,
+      action: "UPDATE",
+      entityType: "Customer",
+      entityId: customerId,
+      details: {
+        previousName: existing.name,
+        previousPhone: existing.phone,
+        name,
+        phone,
+        ...(formData.has("isBlacklisted")
+          ? {
+              previousBlacklisted: existing.isBlacklisted,
+              isBlacklisted: updateData.isBlacklisted,
+            }
+          : {}),
+      },
+    });
+
+    revalidatePath("/customers");
+
+    const summary = await loadCustomerSummary(customerId);
+    if (!summary) {
+      return { ok: false, error: "Could not load customer." };
+    }
+
+    return { ok: true, customer: summary };
+  } catch {
+    return { ok: false, error: "Could not update customer." };
+  }
+}
+
 export async function linkGuarantor(
   customerId: string,
   guarantorCustomerId: string,

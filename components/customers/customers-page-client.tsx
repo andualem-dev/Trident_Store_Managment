@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import { CustomerAvatar } from "@/components/customers/customer-avatar";
+import { CustomerEditSection } from "@/components/customers/customer-edit-section";
 import { CustomerGuarantorsSection } from "@/components/customers/customer-guarantors-section";
+import { CustomerIdCardPhotoSection } from "@/components/customers/customer-id-card-photo-section";
 import { CustomerPhoneSearch } from "@/components/customers/customer-phone-search";
 import { CustomerPhotos } from "@/components/customers/customer-photos";
 import { CustomerProfilePhotoSection } from "@/components/customers/customer-profile-photo-section";
@@ -12,8 +14,10 @@ import type { CustomerListRow, CustomerSummary } from "@/lib/customers";
 
 export function CustomersPageClient({
   customers,
+  isAdmin,
 }: {
   customers: CustomerListRow[];
+  isAdmin: boolean;
 }) {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(
@@ -69,19 +73,19 @@ export function CustomersPageClient({
                 <p className="text-sm text-zinc-600">{selectedCustomer.phone}</p>
               </div>
             </div>
+            <CustomerEditSection
+              customer={selectedCustomer}
+              isAdmin={isAdmin}
+              onUpdated={updateSelectedCustomer}
+            />
             <CustomerProfilePhotoSection
               customer={selectedCustomer}
               onUpdated={updateSelectedCustomer}
             />
-            <div>
-              <h3 className="text-sm font-semibold text-zinc-900">ID card photo</h3>
-              <div className="mt-2">
-                <CustomerPhotos
-                  idCardPhotoUrl={selectedCustomer.idCardPhotoUrl}
-                  profilePhotoUrl={null}
-                />
-              </div>
-            </div>
+            <CustomerIdCardPhotoSection
+              customer={selectedCustomer}
+              onUpdated={updateSelectedCustomer}
+            />
             <CustomerGuarantorsSection
               customer={selectedCustomer}
               onUpdated={updateSelectedCustomer}
