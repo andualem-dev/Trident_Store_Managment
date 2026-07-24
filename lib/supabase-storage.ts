@@ -12,23 +12,23 @@ function getSupabaseSecretKey() {
   );
 }
 
-function isNewSupabaseApiKey(key: string) {
-  return key.startsWith("sb_publishable_") || key.startsWith("sb_secret_");
+function supabaseStorageHeaders(supabaseKey: string) {
+  return {
+    apikey: supabaseKey,
+    Authorization: `Bearer ${supabaseKey}`,
+  };
 }
 
 /**
- * New-format Supabase keys (sb_secret_...) must not be sent as Bearer tokens.
- * The full supabase-js client still does that for Storage, so we use storage-js
- * directly with a fetch wrapper that only sets the apikey header.
+ * Storage requires both apikey and Authorization. For new sb_secret keys, Supabase
+ * accepts Authorization when it matches apikey (see API keys migration docs).
  */
 function createSupabaseStorageFetch(supabaseKey: string): typeof fetch {
   return async (input, init) => {
     const headers = new Headers(init?.headers);
     headers.set("apikey", supabaseKey);
 
-    if (isNewSupabaseApiKey(supabaseKey)) {
-      headers.delete("Authorization");
-    } else if (!headers.has("Authorization")) {
+    if (!headers.has("Authorization")) {
       headers.set("Authorization", `Bearer ${supabaseKey}`);
     }
 
@@ -55,7 +55,7 @@ export function getSupabaseStorageClient() {
 
     storageClient = new StorageClient(
       `${baseUrl}/storage/v1`,
-      { apikey: key },
+      supabaseStorageHeaders(key),
       createSupabaseStorageFetch(key),
     );
   }
