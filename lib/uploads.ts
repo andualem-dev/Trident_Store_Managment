@@ -7,6 +7,11 @@ import {
   isSupabaseStorageConfigured,
   uploadToSupabaseStorage,
 } from "@/lib/supabase-storage";
+import {
+  OPTIMIZED_IMAGE_EXT,
+  OPTIMIZED_IMAGE_MIME,
+  optimizeCustomerImage,
+} from "@/lib/image-optimize";
 import { uploadPublicUrl } from "@/lib/upload-url";
 
 export { uploadPublicUrl };
@@ -14,20 +19,7 @@ export { uploadPublicUrl };
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
-const MAX_BYTES = 5 * 1024 * 1024;
-
-function extensionForMime(mime: string): string | null {
-  switch (mime) {
-    case "image/jpeg":
-      return ".jpg";
-    case "image/png":
-      return ".png";
-    case "image/webp":
-      return ".webp";
-    default:
-      return null;
-  }
-}
+const MAX_INPUT_BYTES = 5 * 1024 * 1024;
 
 function isVercelRuntime() {
   return process.env.VERCEL === "1";
@@ -77,28 +69,39 @@ export async function saveCustomerImage(
   if (!file || file.size === 0) {
     throw new Error("Empty file");
   }
-  if (file.size > MAX_BYTES) {
+  if (file.size > MAX_INPUT_BYTES) {
     throw new Error("File too large (max 5MB).");
   }
   if (!ALLOWED_MIME.has(file.type)) {
     throw new Error("Only JPEG, PNG, or WebP images are allowed.");
   }
 
-  const ext = extensionForMime(file.type);
-  if (!ext) {
-    throw new Error("Unsupported image type.");
+  const inputBuffer = Buffer.from(await file.arrayBuffer());
+  let optimizedBuffer: Buffer;
+
+  try {
+    optimizedBuffer = await optimizeCustomerImage(inputBuffer, kind);
+  } catch {
+    throw new Error("Could not process image. Try a different photo.");
+  }
+
+  if (optimizedBuffer.length === 0) {
+    throw new Error("Empty file");
   }
 
   const suffix = randomBytes(4).toString("hex");
   const relativePath = path.posix.join(
     "customers",
     customerId,
-    `${kind}-${suffix}${ext}`,
+    `${kind}-${suffix}${OPTIMIZED_IMAGE_EXT}`,
   );
-  const buffer = Buffer.from(await file.arrayBuffer());
 
   if (isSupabaseStorageConfigured()) {
-    await uploadToSupabaseStorage(relativePath, buffer, file.type);
+    await uploadToSupabaseStorage(
+      relativePath,
+      optimizedBuffer,
+      OPTIMIZED_IMAGE_MIME,
+    );
     return relativePath;
   }
 
@@ -106,7 +109,7 @@ export async function saveCustomerImage(
 
   const absolutePath = path.join(UPLOAD_ROOT, relativePath);
   await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-  await fs.writeFile(absolutePath, buffer);
+  await fs.writeFile(absolutePath, optimizedBuffer);
 
   return relativePath;
 }

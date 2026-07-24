@@ -27,7 +27,8 @@
     "iron-session": "^8.0.4",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -45,6 +46,7 @@
   "allowScripts": {
     "@prisma/engines@6.19.3": true,
     "prisma@6.19.3": true,
-    "esbuild@0.28.1": true
+    "esbuild@0.28.1": true,
+    "sharp@0.34.5": true
   }
 }
