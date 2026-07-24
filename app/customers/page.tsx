@@ -20,6 +20,8 @@ export default async function CustomersPage() {
       name: true,
       phone: true,
       isBlacklisted: true,
+      idCardPhotoUrl: true,
+      profilePhotoUrl: true,
     },
     orderBy: [{ name: "asc" }],
   });

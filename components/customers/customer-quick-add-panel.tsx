@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createCustomer } from "@/app/customers/actions";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +36,7 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
       onCreated?.(result.customer);
       form.reset();
       onClose();
+      router.refresh();
     });
   }
 

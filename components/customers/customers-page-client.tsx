@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CustomerPhoneSearch } from "@/components/customers/customer-phone-search";
+import { CustomerPhotos } from "@/components/customers/customer-photos";
 import { CustomerQuickAddPanel } from "@/components/customers/customer-quick-add-panel";
 import type { CustomerListRow, CustomerSummary } from "@/lib/customers";
 
@@ -44,11 +45,17 @@ export function CustomersPageClient({
           />
         </div>
         {selectedCustomer ? (
-          <p className="mt-3 text-sm text-zinc-700">
-            Selected:{" "}
-            <span className="font-medium">{selectedCustomer.name}</span> (
-            {selectedCustomer.phone})
-          </p>
+          <div className="mt-4 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm text-zinc-700">
+              Selected:{" "}
+              <span className="font-medium">{selectedCustomer.name}</span> (
+              {selectedCustomer.phone})
+            </p>
+            <CustomerPhotos
+              idCardPhotoUrl={selectedCustomer.idCardPhotoUrl}
+              profilePhotoUrl={selectedCustomer.profilePhotoUrl}
+            />
+          </div>
         ) : null}
       </section>
 
@@ -58,13 +65,14 @@ export function CustomersPageClient({
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Phone</th>
+              <th className="px-4 py-3 font-medium">Photos</th>
               <th className="px-4 py-3 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {customers.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-zinc-600">
+                <td colSpan={4} className="px-4 py-8 text-center text-zinc-600">
                   No customers yet. Use quick add to register someone.
                 </td>
               </tr>
@@ -75,6 +83,13 @@ export function CustomersPageClient({
                     {customer.name}
                   </td>
                   <td className="px-4 py-3 text-zinc-700">{customer.phone}</td>
+                  <td className="px-4 py-3">
+                    <CustomerPhotos
+                      idCardPhotoUrl={customer.idCardPhotoUrl}
+                      profilePhotoUrl={customer.profilePhotoUrl}
+                      size="sm"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     {customer.isBlacklisted ? (
                       <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800 ring-1 ring-red-200 ring-inset">

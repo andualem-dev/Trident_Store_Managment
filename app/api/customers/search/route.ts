@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
       name: true,
       phone: true,
       isBlacklisted: true,
+      idCardPhotoUrl: true,
+      profilePhotoUrl: true,
     },
     take: 24,
   });

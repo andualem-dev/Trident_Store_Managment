@@ -125,6 +125,8 @@ export async function createCustomer(
         name,
         phone,
         isBlacklisted: customer.isBlacklisted,
+        idCardPhotoUrl,
+        profilePhotoUrl,
       },
     };
   } catch {
