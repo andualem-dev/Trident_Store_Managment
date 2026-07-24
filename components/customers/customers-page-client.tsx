@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { CustomerAvatar } from "@/components/customers/customer-avatar";
 import { CustomerGuarantorsSection } from "@/components/customers/customer-guarantors-section";
 import { CustomerPhoneSearch } from "@/components/customers/customer-phone-search";
 import { CustomerPhotos } from "@/components/customers/customer-photos";
+import { CustomerProfilePhotoSection } from "@/components/customers/customer-profile-photo-section";
 import { CustomerQuickAddPanel } from "@/components/customers/customer-quick-add-panel";
 import type { CustomerListRow, CustomerSummary } from "@/lib/customers";
 
@@ -55,16 +57,31 @@ export function CustomersPageClient({
           />
         </div>
         {selectedCustomer ? (
-          <div className="mt-4 space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-            <p className="text-sm text-zinc-700">
-              Selected:{" "}
-              <span className="font-medium">{selectedCustomer.name}</span> (
-              {selectedCustomer.phone})
-            </p>
-            <CustomerPhotos
-              idCardPhotoUrl={selectedCustomer.idCardPhotoUrl}
-              profilePhotoUrl={selectedCustomer.profilePhotoUrl}
+          <div className="mt-4 space-y-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <CustomerAvatar
+                name={selectedCustomer.name}
+                profilePhotoUrl={selectedCustomer.profilePhotoUrl}
+                size="lg"
+              />
+              <div>
+                <p className="font-medium text-zinc-900">{selectedCustomer.name}</p>
+                <p className="text-sm text-zinc-600">{selectedCustomer.phone}</p>
+              </div>
+            </div>
+            <CustomerProfilePhotoSection
+              customer={selectedCustomer}
+              onUpdated={updateSelectedCustomer}
             />
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-900">ID card photo</h3>
+              <div className="mt-2">
+                <CustomerPhotos
+                  idCardPhotoUrl={selectedCustomer.idCardPhotoUrl}
+                  profilePhotoUrl={null}
+                />
+              </div>
+            </div>
             <CustomerGuarantorsSection
               customer={selectedCustomer}
               onUpdated={updateSelectedCustomer}
@@ -77,16 +94,17 @@ export function CustomersPageClient({
         <table className="min-w-full divide-y divide-zinc-200 text-left text-sm">
           <thead className="bg-zinc-50 text-zinc-600">
             <tr>
+              <th className="px-4 py-3 font-medium">Profile</th>
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Phone</th>
-              <th className="px-4 py-3 font-medium">Photos</th>
+              <th className="px-4 py-3 font-medium">ID card</th>
               <th className="px-4 py-3 font-medium">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-100">
             {customers.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-zinc-600">
+                <td colSpan={5} className="px-4 py-8 text-center text-zinc-600">
                   No customers yet. Use quick add to register someone.
                 </td>
               </tr>
@@ -98,6 +116,13 @@ export function CustomersPageClient({
                     selectedCustomer?.id === customer.id ? "bg-zinc-50" : undefined
                   }
                 >
+                  <td className="px-4 py-3">
+                    <CustomerAvatar
+                      name={customer.name}
+                      profilePhotoUrl={customer.profilePhotoUrl}
+                      size="sm"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-zinc-900">
                     <button
                       type="button"
@@ -111,7 +136,7 @@ export function CustomersPageClient({
                   <td className="px-4 py-3">
                     <CustomerPhotos
                       idCardPhotoUrl={customer.idCardPhotoUrl}
-                      profilePhotoUrl={customer.profilePhotoUrl}
+                      profilePhotoUrl={null}
                       size="sm"
                     />
                   </td>

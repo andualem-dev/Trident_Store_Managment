@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
+import { CustomerAvatar } from "@/components/customers/customer-avatar";
 import type { CustomerSummary } from "@/lib/customers";
 
 type SearchResponse = {
@@ -141,15 +142,22 @@ export function CustomerPhoneSearch({
               <button
                 type="button"
                 onClick={() => handleSelect(customer)}
-                className="flex min-h-16 w-full flex-col items-start justify-center px-4 py-3 text-left hover:bg-zinc-50"
+                className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left hover:bg-zinc-50"
               >
-                <span className="font-medium text-zinc-900">{customer.name}</span>
-                <span className="text-sm text-zinc-600">{customer.phone}</span>
-                {customer.isBlacklisted ? (
-                  <span className="mt-1 text-xs font-medium text-red-700">
-                    Blacklisted
-                  </span>
-                ) : null}
+                <CustomerAvatar
+                  name={customer.name}
+                  profilePhotoUrl={customer.profilePhotoUrl}
+                  size="sm"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-zinc-900">{customer.name}</span>
+                  <span className="block text-sm text-zinc-600">{customer.phone}</span>
+                  {customer.isBlacklisted ? (
+                    <span className="mt-1 block text-xs font-medium text-red-700">
+                      Blacklisted
+                    </span>
+                  ) : null}
+                </span>
               </button>
             </li>
           ))}

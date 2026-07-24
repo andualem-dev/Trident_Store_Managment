@@ -7,6 +7,7 @@ import {
   type RentalReceipt,
 } from "@/app/rentals/new/actions";
 import { CustomerPhoneSearch } from "@/components/customers/customer-phone-search";
+import { CustomerAvatar } from "@/components/customers/customer-avatar";
 import { CustomerQuickAddPanel } from "@/components/customers/customer-quick-add-panel";
 import type { CustomerSummary } from "@/lib/customers";
 
@@ -296,16 +297,21 @@ export function NewRentalScreen({
 
             {customer ? (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
-                <div>
-                  <p className="font-semibold text-emerald-950">
-                    {customer.name}
-                  </p>
-                  <p className="text-sm text-emerald-800">{customer.phone}</p>
-                  {customer.isBlacklisted ? (
-                    <p className="mt-1 font-semibold text-red-700">
-                      Warning: customer is blacklisted
-                    </p>
-                  ) : null}
+                <div className="flex items-center gap-3">
+                  <CustomerAvatar
+                    name={customer.name}
+                    profilePhotoUrl={customer.profilePhotoUrl}
+                    size="md"
+                  />
+                  <div>
+                    <p className="font-semibold text-emerald-950">{customer.name}</p>
+                    <p className="text-sm text-emerald-800">{customer.phone}</p>
+                    {customer.isBlacklisted ? (
+                      <p className="mt-1 font-semibold text-red-700">
+                        Warning: customer is blacklisted
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
                 <button
                   type="button"

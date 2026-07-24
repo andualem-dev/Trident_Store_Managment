@@ -13,6 +13,10 @@ export type CustomerActionResult =
   | { ok: true; customer: CustomerSummary }
   | { ok: false; error: string };
 
+export type CustomerPhotoActionResult =
+  | { ok: true; customer: CustomerSummary }
+  | { ok: false; error: string };
+
 export type GuarantorActionResult =
   | { ok: true; guarantors: CustomerGuarantor[] }
   | { ok: false; error: string };
@@ -186,6 +190,68 @@ export async function createCustomer(
     return { ok: true, customer: summary };
   } catch {
     return { ok: false, error: "Could not register customer." };
+  }
+}
+
+export async function uploadCustomerProfilePhoto(
+  customerId: string,
+  formData: FormData,
+): Promise<CustomerPhotoActionResult> {
+  try {
+    const session = await requireSession();
+
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return { ok: false, error: "Customer not found." };
+    }
+
+    const profileFile = formData.get("profilePhoto");
+    if (!(profileFile instanceof File) || profileFile.size === 0) {
+      return { ok: false, error: "Choose a profile photo." };
+    }
+
+    let profilePhotoUrl: string;
+    try {
+      profilePhotoUrl = await saveCustomerImage(
+        customerId,
+        "profile",
+        profileFile,
+      );
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Profile upload failed.",
+      };
+    }
+
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { profilePhotoUrl },
+    });
+
+    await logAudit({
+      operatorId: session.operatorId,
+      action: "UPDATE",
+      entityType: "Customer",
+      entityId: customerId,
+      details: { updatedProfilePhoto: true },
+    });
+
+    revalidatePath("/customers");
+
+    const summary = await loadCustomerSummary(customerId);
+    if (!summary) {
+      return { ok: false, error: "Could not load customer." };
+    }
+
+    return { ok: true, customer: summary };
+  } catch {
+    return { ok: false, error: "Could not upload profile picture." };
   }
 }
 

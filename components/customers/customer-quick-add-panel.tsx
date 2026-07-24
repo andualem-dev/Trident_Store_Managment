@@ -100,6 +100,20 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
               </p>
             </div>
 
+            <div>
+              <label htmlFor="qa-profile" className="mb-1 block text-sm font-medium">
+                Profile picture (optional)
+              </label>
+              <input
+                id="qa-profile"
+                name="profilePhoto"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+                capture="user"
+                className="block w-full text-sm text-zinc-600"
+              />
+            </div>
+
             <details className="group rounded-xl border border-zinc-200 px-3">
               <summary className="flex min-h-12 cursor-pointer list-none items-center text-sm font-medium text-zinc-800 after:ml-auto after:text-lg after:text-zinc-600 after:content-['+'] group-open:after:content-['−']">
                 ID card photo (optional)
@@ -107,20 +121,6 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
               <div className="pb-3">
                 <input
                   name="idCardPhoto"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-                  className="block w-full text-sm text-zinc-600"
-                />
-              </div>
-            </details>
-
-            <details className="group rounded-xl border border-zinc-200 px-3">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center text-sm font-medium text-zinc-800 after:ml-auto after:text-lg after:text-zinc-600 after:content-['+'] group-open:after:content-['−']">
-                Profile picture (optional)
-              </summary>
-              <div className="pb-3">
-                <input
-                  name="profilePhoto"
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                   className="block w-full text-sm text-zinc-600"
