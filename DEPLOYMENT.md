@@ -96,7 +96,15 @@ Re-seeding on a database that already has data **deletes all operators** (`delet
 | Path | Schedule (UTC) | Purpose |
 | --- | --- | --- |
 | `/api/reports/daily` | `0 21 * * *` (21:00 daily) | End-of-day Telegram summary |
-| `/api/reports/overdue-check` | `0 * * * *` (every hour) | Newly overdue rental alerts |
+
+**Vercel Hobby plan:** only one cron job per project (daily). The hourly overdue route is **not** in `vercel.json` on Hobby — use an external scheduler (e.g. [cron-job.org](https://cron-job.org)) to `GET https://YOUR_DOMAIN/api/reports/overdue-check` every hour with header `Authorization: Bearer CRON_SECRET`. On **Vercel Pro**, you can add the hourly entry back to `vercel.json`:
+
+```json
+{
+  "path": "/api/reports/overdue-check",
+  "schedule": "0 * * * *"
+}
+```
 
 Both routes require:
 
