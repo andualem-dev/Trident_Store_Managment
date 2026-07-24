@@ -31,6 +31,7 @@ export default async function AdminOperatorsPage() {
       name: true,
       uniqueCode: true,
       isAdmin: true,
+      passwordPlain: true,
     },
     orderBy: [{ isAdmin: "desc" }, { name: "asc" }],
   });
@@ -39,6 +40,7 @@ export default async function AdminOperatorsPage() {
     id: row.id,
     name: row.name,
     uniqueCode: row.uniqueCode,
+    passwordPlain: row.passwordPlain,
     isAdmin: row.isAdmin,
   }));
 

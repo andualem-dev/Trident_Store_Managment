@@ -17,12 +17,14 @@ type OperatorForm = {
   id?: string;
   name: string;
   password: string;
+  currentPassword: string | null;
   isAdmin: boolean;
 };
 
 const emptyForm: OperatorForm = {
   name: "",
   password: "",
+  currentPassword: null,
   isAdmin: false,
 };
 
@@ -50,6 +52,7 @@ export function OperatorsAdminPanel({
       id: row.id,
       name: row.name,
       password: "",
+      currentPassword: row.passwordPlain,
       isAdmin: row.isAdmin,
     });
     setError(null);
@@ -61,6 +64,7 @@ export function OperatorsAdminPanel({
       id: row.id,
       name: row.name,
       password: "",
+      currentPassword: row.passwordPlain,
       isAdmin: row.isAdmin,
     });
     setError(null);
@@ -134,6 +138,7 @@ export function OperatorsAdminPanel({
           <thead className="bg-zinc-50 text-zinc-600">
             <tr>
               <th className="px-4 py-3 font-medium">Name</th>
+              <th className="px-4 py-3 font-medium">Password</th>
               <th className="px-4 py-3 font-medium">Role</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
@@ -141,7 +146,7 @@ export function OperatorsAdminPanel({
           <tbody className="divide-y divide-zinc-100">
             {operators.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-zinc-600">
+                <td colSpan={4} className="px-4 py-8 text-center text-zinc-600">
                   No operators yet.
                 </td>
               </tr>
@@ -153,6 +158,9 @@ export function OperatorsAdminPanel({
                     {row.id === currentOperatorId ? (
                       <span className="ml-2 text-xs font-normal text-zinc-500">(you)</span>
                     ) : null}
+                  </td>
+                  <td className="px-4 py-3 font-mono tabular-nums text-zinc-800">
+                    {row.passwordPlain ?? "—"}
                   </td>
                   <td className="px-4 py-3">
                     {row.isAdmin ? (
@@ -212,20 +220,26 @@ export function OperatorsAdminPanel({
               <form onSubmit={handlePasswordReset} className="mt-4 space-y-4">
                 <p className="text-sm text-zinc-600">{form.name}</p>
                 <div>
+                  <p className="mb-1 text-sm font-medium">Current password</p>
+                  <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm tabular-nums text-zinc-900">
+                    {form.currentPassword ?? "—"}
+                  </p>
+                </div>
+                <div>
                   <label htmlFor="op-password" className="mb-1 block text-sm font-medium">
                     New password
                   </label>
                   <input
                     id="op-password"
-                    type="password"
-                    autoComplete="new-password"
+                    type="text"
+                    autoComplete="off"
                     required
-                    minLength={6}
+                    minLength={4}
                     value={form.password}
                     onChange={(event) =>
                       setForm((current) => ({ ...current, password: event.target.value }))
                     }
-                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm tabular-nums"
                   />
                 </div>
                 {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -269,16 +283,23 @@ export function OperatorsAdminPanel({
                     </label>
                     <input
                       id="op-new-password"
-                      type="password"
-                      autoComplete="new-password"
+                      type="text"
+                      autoComplete="off"
                       required
-                      minLength={6}
+                      minLength={4}
                       value={form.password}
                       onChange={(event) =>
                         setForm((current) => ({ ...current, password: event.target.value }))
                       }
-                      className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm tabular-nums"
                     />
+                  </div>
+                ) : form.currentPassword ? (
+                  <div>
+                    <p className="mb-1 text-sm font-medium">Current password</p>
+                    <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-sm tabular-nums text-zinc-900">
+                      {form.currentPassword}
+                    </p>
                   </div>
                 ) : null}
                 <label className="flex items-center gap-2 text-sm text-zinc-700">

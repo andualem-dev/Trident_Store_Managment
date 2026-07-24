@@ -11,6 +11,7 @@ export type OperatorRow = {
   id: string;
   name: string;
   uniqueCode: string;
+  passwordPlain: string | null;
   isAdmin: boolean;
 };
 
@@ -18,7 +19,7 @@ export type ActionResult =
   | { ok: true }
   | { ok: false; error: string };
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 4;
 
 function parsePassword(value: string): string | null {
   const trimmed = value.trim();
@@ -86,6 +87,7 @@ export async function createOperator(formData: FormData): Promise<ActionResult> 
         name,
         uniqueCode,
         passwordHash,
+        passwordPlain: password,
         isAdmin,
       },
     });
@@ -189,7 +191,7 @@ export async function resetOperatorPassword(formData: FormData): Promise<ActionR
 
     await prisma.operator.update({
       where: { id },
-      data: { passwordHash },
+      data: { passwordHash, passwordPlain: password },
     });
 
     await logAudit({
