@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { CustomersPageClient } from "@/components/customers/customers-page-client";
 import { LogoutButton } from "@/components/logout-button";
 import type { CustomerListRow } from "@/lib/customers";
+import { mapGuarantors } from "@/lib/customers";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session-server";
 
@@ -22,11 +23,22 @@ export default async function CustomersPage() {
       isBlacklisted: true,
       idCardPhotoUrl: true,
       profilePhotoUrl: true,
+      guarantors: {
+        include: {
+          guarantorCustomer: {
+            select: { name: true, phone: true },
+          },
+        },
+        orderBy: { id: "asc" },
+      },
     },
     orderBy: [{ name: "asc" }],
   });
 
-  const customers: CustomerListRow[] = rows;
+  const customers: CustomerListRow[] = rows.map(({ guarantors, ...rest }) => ({
+    ...rest,
+    guarantors: mapGuarantors(guarantors),
+  }));
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-10">

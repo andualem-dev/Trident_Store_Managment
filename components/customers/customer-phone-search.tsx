@@ -11,6 +11,7 @@ type SearchResponse = {
 export type CustomerPhoneSearchProps = {
   onSelect: (customer: CustomerSummary) => void;
   selectedCustomer?: CustomerSummary | null;
+  excludeCustomerId?: string;
   placeholder?: string;
   label?: string;
   minChars?: number;
@@ -20,6 +21,7 @@ export type CustomerPhoneSearchProps = {
 export function CustomerPhoneSearch({
   onSelect,
   selectedCustomer = null,
+  excludeCustomerId,
   placeholder = "Search by name or phone…",
   label = "Search customer",
   minChars = 2,
@@ -65,7 +67,10 @@ export function CustomerPhoneSearch({
           return;
         }
         const data = (await response.json()) as SearchResponse;
-        setResults(data.customers);
+        const filtered = excludeCustomerId
+          ? data.customers.filter((customer) => customer.id !== excludeCustomerId)
+          : data.customers;
+        setResults(filtered);
         setOpen(true);
       } catch {
         if (!controller.signal.aborted) {
@@ -82,7 +87,7 @@ export function CustomerPhoneSearch({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query, minChars]);
+  }, [query, minChars, excludeCustomerId]);
 
   function handleSelect(customer: CustomerSummary) {
     onSelect(customer);

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { logAudit } from "@/lib/audit";
-import type { CustomerSummary } from "@/lib/customers";
+import type { CustomerGuarantor, CustomerSummary } from "@/lib/customers";
+import { mapGuarantors } from "@/lib/customers";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session-server";
 import { saveCustomerImage } from "@/lib/uploads";
@@ -12,8 +13,69 @@ export type CustomerActionResult =
   | { ok: true; customer: CustomerSummary }
   | { ok: false; error: string };
 
+export type GuarantorActionResult =
+  | { ok: true; guarantors: CustomerGuarantor[] }
+  | { ok: false; error: string };
+
+const guarantorInclude = {
+  guarantors: {
+    include: {
+      guarantorCustomer: {
+        select: { name: true, phone: true },
+      },
+    },
+    orderBy: { id: "asc" as const },
+  },
+};
+
 function normalizePhone(phone: string) {
   return phone.trim();
+}
+
+async function loadCustomerSummary(customerId: string): Promise<CustomerSummary | null> {
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: {
+      id: true,
+      name: true,
+      phone: true,
+      isBlacklisted: true,
+      idCardPhotoUrl: true,
+      profilePhotoUrl: true,
+      ...guarantorInclude,
+    },
+  });
+
+  if (!customer) {
+    return null;
+  }
+
+  const { guarantors, ...rest } = customer;
+  return {
+    ...rest,
+    guarantors: mapGuarantors(guarantors),
+  };
+}
+
+async function validateGuarantorLink(customerId: string, guarantorCustomerId: string) {
+  if (customerId === guarantorCustomerId) {
+    return "A customer cannot be their own guarantor.";
+  }
+
+  const guarantorCustomer = await prisma.customer.findUnique({
+    where: { id: guarantorCustomerId },
+    select: { id: true, isBlacklisted: true },
+  });
+
+  if (!guarantorCustomer) {
+    return "Selected guarantor customer was not found.";
+  }
+
+  if (guarantorCustomer.isBlacklisted) {
+    return "A blacklisted customer cannot be a guarantor.";
+  }
+
+  return null;
 }
 
 export async function createCustomer(
@@ -24,10 +86,9 @@ export async function createCustomer(
 
     const name = String(formData.get("name") ?? "").trim();
     const phone = normalizePhone(String(formData.get("phone") ?? ""));
-    const guarantorName = String(formData.get("guarantorName") ?? "").trim();
-    const guarantorPhone = normalizePhone(
-      String(formData.get("guarantorPhone") ?? ""),
-    );
+    const guarantorCustomerId = String(
+      formData.get("guarantorCustomerId") ?? "",
+    ).trim();
 
     if (!name) {
       return { ok: false, error: "Name is required." };
@@ -38,15 +99,6 @@ export async function createCustomer(
 
     const idCardFile = formData.get("idCardPhoto");
     const profileFile = formData.get("profilePhoto");
-
-    const hasGuarantorFields =
-      guarantorName.length > 0 || guarantorPhone.length > 0;
-    if (hasGuarantorFields && (!guarantorName || !guarantorPhone)) {
-      return {
-        ok: false,
-        error: "Guarantor requires both name and phone, or leave both empty.",
-      };
-    }
 
     const customer = await prisma.customer.create({
       data: {
@@ -92,12 +144,20 @@ export async function createCustomer(
       });
     }
 
-    if (guarantorName && guarantorPhone) {
+    if (guarantorCustomerId) {
+      const guarantorError = await validateGuarantorLink(
+        customer.id,
+        guarantorCustomerId,
+      );
+      if (guarantorError) {
+        await prisma.customer.delete({ where: { id: customer.id } });
+        return { ok: false, error: guarantorError };
+      }
+
       await prisma.guarantor.create({
         data: {
           customerId: customer.id,
-          name: guarantorName,
-          phone: guarantorPhone,
+          guarantorCustomerId,
         },
       });
     }
@@ -112,7 +172,73 @@ export async function createCustomer(
         phone,
         hasIdCardPhoto: Boolean(idCardPhotoUrl),
         hasProfilePhoto: Boolean(profilePhotoUrl),
-        hasGuarantor: Boolean(guarantorName && guarantorPhone),
+        guarantorCustomerId: guarantorCustomerId || null,
+      },
+    });
+
+    revalidatePath("/customers");
+
+    const summary = await loadCustomerSummary(customer.id);
+    if (!summary) {
+      return { ok: false, error: "Could not load new customer." };
+    }
+
+    return { ok: true, customer: summary };
+  } catch {
+    return { ok: false, error: "Could not register customer." };
+  }
+}
+
+export async function linkGuarantor(
+  customerId: string,
+  guarantorCustomerId: string,
+): Promise<GuarantorActionResult> {
+  try {
+    const session = await requireSession();
+
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return { ok: false, error: "Customer not found." };
+    }
+
+    const validationError = await validateGuarantorLink(
+      customerId,
+      guarantorCustomerId,
+    );
+    if (validationError) {
+      return { ok: false, error: validationError };
+    }
+
+    await prisma.guarantor.upsert({
+      where: {
+        customerId_guarantorCustomerId: {
+          customerId,
+          guarantorCustomerId,
+        },
+      },
+      create: {
+        customerId,
+        guarantorCustomerId,
+      },
+      update: {},
+    });
+
+    const updated = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: guarantorInclude,
+    });
+
+    await logAudit({
+      operatorId: session.operatorId,
+      action: "UPDATE",
+      entityType: "Customer",
+      entityId: customerId,
+      details: {
+        linkedGuarantorCustomerId: guarantorCustomerId,
       },
     });
 
@@ -120,16 +246,53 @@ export async function createCustomer(
 
     return {
       ok: true,
-      customer: {
-        id: customer.id,
-        name,
-        phone,
-        isBlacklisted: customer.isBlacklisted,
-        idCardPhotoUrl,
-        profilePhotoUrl,
-      },
+      guarantors: mapGuarantors(updated?.guarantors ?? []),
     };
   } catch {
-    return { ok: false, error: "Could not register customer." };
+    return { ok: false, error: "Could not link guarantor." };
+  }
+}
+
+export async function removeGuarantor(
+  customerId: string,
+  guarantorId: string,
+): Promise<GuarantorActionResult> {
+  try {
+    const session = await requireSession();
+
+    const link = await prisma.guarantor.findFirst({
+      where: { id: guarantorId, customerId },
+      select: { id: true, guarantorCustomerId: true },
+    });
+
+    if (!link) {
+      return { ok: false, error: "Guarantor link not found." };
+    }
+
+    await prisma.guarantor.delete({ where: { id: guarantorId } });
+
+    const updated = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: guarantorInclude,
+    });
+
+    await logAudit({
+      operatorId: session.operatorId,
+      action: "UPDATE",
+      entityType: "Customer",
+      entityId: customerId,
+      details: {
+        removedGuarantorCustomerId: link.guarantorCustomerId,
+      },
+    });
+
+    revalidatePath("/customers");
+
+    return {
+      ok: true,
+      guarantors: mapGuarantors(updated?.guarantors ?? []),
+    };
+  } catch {
+    return { ok: false, error: "Could not remove guarantor." };
   }
 }

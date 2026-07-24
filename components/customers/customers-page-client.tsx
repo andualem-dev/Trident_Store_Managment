@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { CustomerGuarantorsSection } from "@/components/customers/customer-guarantors-section";
 import { CustomerPhoneSearch } from "@/components/customers/customer-phone-search";
 import { CustomerPhotos } from "@/components/customers/customer-photos";
 import { CustomerQuickAddPanel } from "@/components/customers/customer-quick-add-panel";
@@ -16,6 +17,15 @@ export function CustomersPageClient({
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(
     null,
   );
+
+  function selectCustomer(customer: CustomerSummary) {
+    const full = customers.find((row) => row.id === customer.id);
+    setSelectedCustomer(full ?? customer);
+  }
+
+  function updateSelectedCustomer(customer: CustomerSummary) {
+    setSelectedCustomer(customer);
+  }
 
   return (
     <>
@@ -41,7 +51,7 @@ export function CustomersPageClient({
           <CustomerPhoneSearch
             key={selectedCustomer?.id ?? "no-customer"}
             selectedCustomer={selectedCustomer}
-            onSelect={setSelectedCustomer}
+            onSelect={selectCustomer}
           />
         </div>
         {selectedCustomer ? (
@@ -54,6 +64,10 @@ export function CustomersPageClient({
             <CustomerPhotos
               idCardPhotoUrl={selectedCustomer.idCardPhotoUrl}
               profilePhotoUrl={selectedCustomer.profilePhotoUrl}
+            />
+            <CustomerGuarantorsSection
+              customer={selectedCustomer}
+              onUpdated={updateSelectedCustomer}
             />
           </div>
         ) : null}
@@ -78,9 +92,20 @@ export function CustomersPageClient({
               </tr>
             ) : (
               customers.map((customer) => (
-                <tr key={customer.id}>
+                <tr
+                  key={customer.id}
+                  className={
+                    selectedCustomer?.id === customer.id ? "bg-zinc-50" : undefined
+                  }
+                >
                   <td className="px-4 py-3 font-medium text-zinc-900">
-                    {customer.name}
+                    <button
+                      type="button"
+                      onClick={() => selectCustomer(customer)}
+                      className="text-left hover:underline"
+                    >
+                      {customer.name}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-zinc-700">{customer.phone}</td>
                   <td className="px-4 py-3">
@@ -109,7 +134,7 @@ export function CustomersPageClient({
       <CustomerQuickAddPanel
         open={quickAddOpen}
         onClose={() => setQuickAddOpen(false)}
-        onCreated={(customer) => setSelectedCustomer(customer)}
+        onCreated={(customer) => selectCustomer(customer)}
       />
     </>
   );

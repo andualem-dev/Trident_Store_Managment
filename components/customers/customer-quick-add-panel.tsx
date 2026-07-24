@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createCustomer } from "@/app/customers/actions";
+import { CustomerPhoneSearch } from "@/components/customers/customer-phone-search";
 import type { CustomerSummary } from "@/lib/customers";
 
 type Props = {
@@ -16,6 +17,7 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [guarantor, setGuarantor] = useState<CustomerSummary | null>(null);
 
   if (!open) {
     return null;
@@ -26,6 +28,9 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
     setError(null);
     const form = event.currentTarget;
     const formData = new FormData(form);
+    if (guarantor) {
+      formData.set("guarantorCustomerId", guarantor.id);
+    }
 
     startTransition(async () => {
       const result = await createCustomer(formData);
@@ -35,6 +40,7 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
       }
       onCreated?.(result.customer);
       form.reset();
+      setGuarantor(null);
       onClose();
       router.refresh();
     });
@@ -126,28 +132,26 @@ export function CustomerQuickAddPanel({ open, onClose, onCreated }: Props) {
               <summary className="flex min-h-12 cursor-pointer list-none items-center text-sm font-medium text-zinc-800 after:ml-auto after:text-lg after:text-zinc-600 after:content-['+'] group-open:after:content-['−']">
                 Guarantor (optional)
               </summary>
-              <div className="space-y-3 pb-3">
-                <div>
-                  <label htmlFor="qa-g-name" className="mb-1 block text-sm font-medium">
-                    Guarantor name
-                  </label>
-                  <input
-                    id="qa-g-name"
-                    name="guarantorName"
-                    className="min-h-12 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="qa-g-phone" className="mb-1 block text-sm font-medium">
-                    Guarantor phone
-                  </label>
-                  <input
-                    id="qa-g-phone"
-                    name="guarantorPhone"
-                    type="tel"
-                    className="min-h-12 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-                  />
-                </div>
+              <div className="space-y-2 pb-3">
+                <p className="text-xs text-zinc-600">
+                  Pick an existing customer as guarantor — not a new name/phone.
+                </p>
+                <CustomerPhoneSearch
+                  key={guarantor?.id ?? "no-guarantor"}
+                  label="Guarantor customer"
+                  placeholder="Search existing customer…"
+                  selectedCustomer={guarantor}
+                  onSelect={setGuarantor}
+                />
+                {guarantor ? (
+                  <button
+                    type="button"
+                    onClick={() => setGuarantor(null)}
+                    className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900"
+                  >
+                    Clear guarantor
+                  </button>
+                ) : null}
               </div>
             </details>
           </div>

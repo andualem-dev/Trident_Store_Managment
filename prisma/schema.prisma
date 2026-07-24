@@ -45,18 +45,21 @@ model Customer {
   profilePhotoUrl String?
   isBlacklisted   Boolean @default(false)
 
-  guarantors Guarantor[]
+  guarantors          Guarantor[] @relation("CustomerGuarantors")
+  guaranteedFor       Guarantor[] @relation("GuarantorForCustomers")
   rentals    Rental[]
   bookings   Booking[]
 }
 
 model Guarantor {
-  id         String @id @default(cuid())
-  customerId String
-  name       String
-  phone      String
+  id                  String @id @default(cuid())
+  customerId          String
+  guarantorCustomerId String
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer          Customer @relation("CustomerGuarantors", fields: [customerId], references: [id], onDelete: Cascade)
+  guarantorCustomer Customer @relation("GuarantorForCustomers", fields: [guarantorCustomerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, guarantorCustomerId])
 }
 
 model Equipment {
