@@ -5,7 +5,7 @@ import {
   buildOverdueReport,
   buildTopCustomersReport,
 } from "@/lib/reporting";
-import { sendTelegramMessage } from "@/lib/telegram";
+import { isTelegramAdminChat, sendTelegramMessage } from "@/lib/telegram";
 
 type TelegramUpdate = {
   update_id?: number;
@@ -54,14 +54,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid update." }, { status: 400 });
   }
 
-  const configuredChatId = process.env.TELEGRAM_ADMIN_CHAT_ID?.trim();
   const incomingChatId = update.message?.chat?.id;
 
-  if (
-    !configuredChatId ||
-    incomingChatId === undefined ||
-    String(incomingChatId) !== configuredChatId
-  ) {
+  if (!isTelegramAdminChat(incomingChatId)) {
     // Return 200 so Telegram does not retry unauthorized or irrelevant updates.
     return NextResponse.json({ ok: true, ignored: true });
   }
@@ -88,7 +83,9 @@ export async function POST(request: Request) {
         response = "Unknown command. Send /help to see available commands.";
     }
 
-    const messagesSent = await sendTelegramMessage(response);
+    const messagesSent = await sendTelegramMessage(response, {
+      chatId: String(incomingChatId),
+    });
     return NextResponse.json({ ok: true, messagesSent });
   } catch (error) {
     console.error("Telegram webhook command failed", error);

@@ -53,6 +53,10 @@ function overlaps(
   return existingStart <= endDate && existingEnd >= startDate;
 }
 
+function itemHasConflict(item: BookingEquipment, startDate: string, endDate: string) {
+  return item.bookings.some((booking) => overlaps(booking, startDate, endDate));
+}
+
 export function NewBookingScreen({
   equipment,
 }: {
@@ -61,13 +65,19 @@ export function NewBookingScreen({
   const [pending, startTransition] = useTransition();
   const [customer, setCustomer] = useState<CustomerSummary | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [equipmentId, setEquipmentId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [filter, setFilter] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const today = localDateInputValue();
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedItems = useMemo(
+    () => equipment.filter((item) => selectedSet.has(item.id)),
+    [equipment, selectedSet],
+  );
 
   const groups = useMemo(() => {
     const query = filter.trim().toLowerCase();
@@ -87,24 +97,38 @@ export function NewBookingScreen({
     return [...grouped.entries()];
   }, [equipment, filter]);
 
-  const selectedEquipment =
-    equipment.find((item) => item.id === equipmentId) ?? null;
-  const selectedConflict =
-    selectedEquipment?.bookings.some((booking) =>
-      overlaps(booking, startDate, endDate),
-    ) ?? false;
+  const conflictingItems = useMemo(
+    () =>
+      selectedItems.filter((item) => itemHasConflict(item, startDate, endDate)),
+    [selectedItems, startDate, endDate],
+  );
+
+  function toggleEquipment(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    );
+    setError(null);
+  }
 
   function handleConfirm() {
     if (!customer) {
       setError("Select a customer.");
       return;
     }
-    if (!equipmentId) {
-      setError("Select one equipment item.");
+    if (selectedIds.length === 0) {
+      setError("Select at least one equipment item.");
       return;
     }
     if (!startDate || !endDate) {
       setError("Choose a start and end date.");
+      return;
+    }
+    if (conflictingItems.length > 0) {
+      setError(
+        `${conflictingItems[0]?.name ?? "An item"} already has an overlapping booking.`,
+      );
       return;
     }
 
@@ -113,7 +137,7 @@ export function NewBookingScreen({
     startTransition(async () => {
       const result = await createBooking({
         customerId: customer.id,
-        equipmentId,
+        equipmentIds: selectedIds,
         startDate,
         endDate,
       });
@@ -122,10 +146,15 @@ export function NewBookingScreen({
         return;
       }
 
+      const count = result.bookings?.length ?? 0;
+      const names =
+        result.bookings?.map((booking) => booking.equipmentName).join(", ") ?? "";
       setSuccess(
-        `Booked ${result.booking?.equipmentName} for ${result.booking?.customerName}.`,
+        count === 1
+          ? `Booked ${names} for ${customer.name}.`
+          : `Booked ${count} items for ${customer.name}: ${names}.`,
       );
-      setEquipmentId(null);
+      setSelectedIds([]);
       setStartDate("");
       setEndDate("");
     });
@@ -251,13 +280,14 @@ export function NewBookingScreen({
                 3. Equipment
               </h2>
               <p className="mt-1 text-sm text-zinc-600">
-                All equipment is shown; current status does not prevent a future
-                booking.
+                Tap items to add them to the booking cart.
               </p>
             </div>
 
             <input
-              type="search"
+              type="text"
+              role="searchbox"
+              inputMode="search"
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
               placeholder="Filter equipment by name…"
@@ -272,19 +302,18 @@ export function NewBookingScreen({
                   </h3>
                   <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {items.map((item) => {
-                      const selected = item.id === equipmentId;
-                      const rangeConflict = item.bookings.some((booking) =>
-                        overlaps(booking, startDate, endDate),
+                      const selected = selectedSet.has(item.id);
+                      const rangeConflict = itemHasConflict(
+                        item,
+                        startDate,
+                        endDate,
                       );
                       return (
                         <button
                           key={item.id}
                           type="button"
                           aria-pressed={selected}
-                          onClick={() => {
-                            setEquipmentId(item.id);
-                            setError(null);
-                          }}
+                          onClick={() => toggleEquipment(item.id)}
                           className={`min-h-24 rounded-xl border p-4 text-left transition ${
                             selected
                               ? "border-zinc-900 bg-zinc-900 text-white ring-2 ring-zinc-900 ring-offset-2"
@@ -326,19 +355,13 @@ export function NewBookingScreen({
 
         <aside className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:sticky lg:top-6">
           <h2 className="text-lg font-semibold text-zinc-950">
-            Booking summary
+            Booking cart
           </h2>
           <dl className="mt-5 space-y-4 text-sm">
             <div>
               <dt className="text-zinc-600">Customer</dt>
               <dd className="mt-1 font-semibold text-zinc-900">
                 {customer?.name ?? "Not selected"}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-zinc-600">Equipment</dt>
-              <dd className="mt-1 font-semibold text-zinc-900">
-                {selectedEquipment?.name ?? "Not selected"}
               </dd>
             </div>
             <div>
@@ -351,10 +374,42 @@ export function NewBookingScreen({
             </div>
           </dl>
 
-          {selectedConflict ? (
+          <div className="mt-5 min-h-28">
+            {selectedItems.length === 0 ? (
+              <p className="rounded-xl bg-zinc-50 px-4 py-6 text-center text-sm text-zinc-600">
+                Tap equipment to add it.
+              </p>
+            ) : (
+              <ul className="divide-y divide-zinc-100">
+                {selectedItems.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-zinc-900">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-zinc-600">{item.category}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleEquipment(item.id)}
+                      className="min-h-12 shrink-0 rounded-xl px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {conflictingItems.length > 0 ? (
             <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
-              This item already has an overlapping booking. Choose another item
-              or date range.
+              {conflictingItems.length === 1
+                ? `${conflictingItems[0]?.name} already has an overlapping booking.`
+                : "Some selected items have overlapping bookings. Remove them or change dates."}
             </p>
           ) : null}
           {error ? (
@@ -368,15 +423,19 @@ export function NewBookingScreen({
             disabled={
               pending ||
               !customer ||
-              !equipmentId ||
+              selectedIds.length === 0 ||
               !startDate ||
               !endDate ||
-              selectedConflict
+              conflictingItems.length > 0
             }
             onClick={handleConfirm}
             className="mt-5 min-h-16 w-full rounded-xl bg-emerald-700 px-4 text-lg font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-700"
           >
-            {pending ? "Creating booking…" : "Confirm booking"}
+            {pending
+              ? "Creating booking…"
+              : selectedIds.length <= 1
+                ? "Confirm booking"
+                : `Confirm ${selectedIds.length} bookings`}
           </button>
         </aside>
       </div>
